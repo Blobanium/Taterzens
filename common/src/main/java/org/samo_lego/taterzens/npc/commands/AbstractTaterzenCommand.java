@@ -1,7 +1,7 @@
 package org.samo_lego.taterzens.npc.commands;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 public abstract class AbstractTaterzenCommand {
@@ -12,7 +12,7 @@ public abstract class AbstractTaterzenCommand {
         this.type = type;
     }
 
-    public abstract void execute(TaterzenNPC npc, Player player);
+    public abstract void execute(TaterzenNPC npc, PlayerEntity player);
 
     public CommandType getType() {
         return this.type;
@@ -21,12 +21,12 @@ public abstract class AbstractTaterzenCommand {
     @Override
     public abstract String toString();
 
-    public CompoundTag toTag(CompoundTag tag) {
+    public NbtCompound toTag(NbtCompound tag) {
         tag.putString("Type", this.type.toString());
         return tag;
     }
 
-    public abstract void fromTag(CompoundTag cmdTag);
+    public abstract void fromTag(NbtCompound cmdTag);
 
     public enum CommandType {
         BUNGEE,

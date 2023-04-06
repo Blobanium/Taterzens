@@ -2,14 +2,14 @@ package org.samo_lego.taterzens.fabric.compatibility.carpet;
 
 import carpet.script.annotation.AnnotationParser;
 import carpet.script.annotation.ScarpetFunction;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.api.TaterzensAPI;
 import org.samo_lego.taterzens.interfaces.ITaterzenEditor;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 import java.util.UUID;
+import net.minecraft.entity.Entity;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 public class AdditionalFunctions {
 
@@ -27,9 +27,9 @@ public class AdditionalFunctions {
      * @return created taterzen.
      */
     @ScarpetFunction
-    public Entity spawn_taterzen(ServerPlayer player, String name) {
+    public Entity spawn_taterzen(ServerPlayerEntity player, String name) {
         TaterzenNPC npc = TaterzensAPI.createTaterzen(player, name);
-        player.getLevel().addFreshEntity(npc);
+        player.getWorld().spawnEntity(npc);
         return npc;
     }
 
@@ -39,7 +39,7 @@ public class AdditionalFunctions {
      * @return taterzen of player or null if player doesn't have taterzen selected.
      */
     @ScarpetFunction
-    public Entity players_taterzen(ServerPlayer player) {
+    public Entity players_taterzen(ServerPlayerEntity player) {
         return ((ITaterzenEditor) player).getNpc();
     }
 

@@ -1,26 +1,26 @@
 package org.samo_lego.taterzens.npc.ai.goal;
 
 
-import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.ai.goal.MoveTowardsRestrictionGoal;
+import net.minecraft.entity.ai.goal.GoToWalkTargetGoal;
+import net.minecraft.entity.mob.PathAwareEntity;
 
 /**
  * Goal used in {@link org.samo_lego.taterzens.npc.NPCData.Movement FORCED_PATH} movement.
  */
-public class DirectPathGoal extends MoveTowardsRestrictionGoal {
+public class DirectPathGoal extends GoToWalkTargetGoal {
 
-    private final PathfinderMob mob;
+    private final PathAwareEntity mob;
     private final double speed;
 
-    public DirectPathGoal(PathfinderMob mob, double speed) {
+    public DirectPathGoal(PathAwareEntity mob, double speed) {
         super(mob, speed);
         this.mob = mob;
         this.speed = speed;
     }
 
     @Override
-    public boolean canUse() {
-        return !this.mob.isWithinRestriction();
+    public boolean canStart() {
+        return !this.mob.isInWalkTargetRange();
     }
 
     /**
@@ -28,10 +28,10 @@ public class DirectPathGoal extends MoveTowardsRestrictionGoal {
      */
     @Override
     public void start() {
-        this.mob.getNavigation().moveTo(
-                this.mob.getRestrictCenter().getX(),
-                this.mob.getRestrictCenter().getY(),
-                this.mob.getRestrictCenter().getZ(),
+        this.mob.getNavigation().startMovingTo(
+                this.mob.getPositionTarget().getX(),
+                this.mob.getPositionTarget().getY(),
+                this.mob.getPositionTarget().getZ(),
                 this.speed
         );
     }

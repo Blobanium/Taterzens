@@ -1,30 +1,30 @@
 package org.samo_lego.taterzens.npc.ai.goal;
 
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.entity.mob.PathAwareEntity;
+import net.minecraft.entity.player.PlayerEntity;
 
 public class ReachMeleeAttackGoal extends MeleeAttackGoal {
 
-    private final PathfinderMob mob;
+    private final PathAwareEntity mob;
 
-    public ReachMeleeAttackGoal(PathfinderMob mob, double speed, boolean pauseWhenMobIdle) {
+    public ReachMeleeAttackGoal(PathAwareEntity mob, double speed, boolean pauseWhenMobIdle) {
         super(mob, speed, pauseWhenMobIdle);
         this.mob = mob;
     }
 
     @Override
-    public boolean canContinueToUse() {
+    public boolean shouldContinue() {
         LivingEntity livingEntity = this.mob.getTarget();
         if(livingEntity == null || !livingEntity.isAlive()) {
             return false;
         }
-        return !(livingEntity instanceof Player) || (!livingEntity.isSpectator() && !((Player) livingEntity).isCreative());
+        return !(livingEntity instanceof PlayerEntity) || (!livingEntity.isSpectator() && !((PlayerEntity) livingEntity).isCreative());
     }
 
     @Override
-    protected double getAttackReachSqr(LivingEntity entity) {
+    protected double getSquaredMaxAttackDistance(LivingEntity entity) {
         return 12.25D;
     }
 }

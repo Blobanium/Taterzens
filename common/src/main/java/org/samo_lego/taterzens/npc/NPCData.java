@@ -1,15 +1,15 @@
 package org.samo_lego.taterzens.npc;
 
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.math.BlockPos;
 
 import static org.samo_lego.taterzens.Taterzens.config;
 
@@ -22,7 +22,7 @@ public class NPCData {
      * Current equipment editor for Taterzen.
      */
     @Nullable
-    public Player equipmentEditor = null;
+    public PlayerEntity equipmentEditor = null;
     /**
      * Default Taterzen movement.
      */
@@ -42,7 +42,7 @@ public class NPCData {
      * Messages of Taterzen.
      * Saved as &lt;Message Text, Delay&gt;
      */
-    public final ArrayList<Pair<Component, Integer>> messages = new ArrayList<>();
+    public final ArrayList<Pair<Text, Integer>> messages = new ArrayList<>();
     /**
      * Permission level of Taterzen.
      */

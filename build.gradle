@@ -96,8 +96,7 @@ subprojects {
 			modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version}"
 			minecraft "com.mojang:minecraft:${project.minecraft_version}"
 			mappings loom.layered {
-				//mappings("net.fabricmc:yarn:$project.yarn_mappings:v2")
-				it.officialMojangMappings()
+				mappings ("net.fabricmc:yarn:$project.yarn_mappings:v2")
 			}
 
 			// C2B

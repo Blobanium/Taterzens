@@ -3,14 +3,13 @@ package org.samo_lego.taterzens.util;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.contents.LiteralContents;
-import net.minecraft.network.chat.contents.TranslatableContents;
-
+import net.minecraft.text.LiteralTextContent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableTextContent;
+import net.minecraft.util.Formatting;
 import java.util.Arrays;
 
 import static org.samo_lego.taterzens.Taterzens.lang;
@@ -21,48 +20,48 @@ public class TextUtil {
     /**
      * Inserts colored insertedText in string message.
      */
-    public static MutableComponent joinText(String key, ChatFormatting messageColor, ChatFormatting insertedTextColor, String... insertedString) {
-        Object[] texts = Arrays.stream(insertedString).map(s -> Component.literal(s).withStyle(insertedTextColor)).toArray();
-        return translate(key, texts).plainCopy().withStyle(messageColor);
+    public static MutableText joinText(String key, Formatting messageColor, Formatting insertedTextColor, String... insertedString) {
+        Object[] texts = Arrays.stream(insertedString).map(s -> Text.literal(s).formatted(insertedTextColor)).toArray();
+        return translate(key, texts).copyContentOnly().formatted(messageColor);
     }
 
-    public static MutableComponent successText(String key, String... insertedText) {
-        return joinText(key, ChatFormatting.GREEN, ChatFormatting.YELLOW, insertedText);
+    public static MutableText successText(String key, String... insertedText) {
+        return joinText(key, Formatting.GREEN, Formatting.YELLOW, insertedText);
     }
 
-    public static MutableComponent errorText(String key, String... insertedText) {
-        return joinText(key, ChatFormatting.RED, ChatFormatting.LIGHT_PURPLE, insertedText);
+    public static MutableText errorText(String key, String... insertedText) {
+        return joinText(key, Formatting.RED, Formatting.LIGHT_PURPLE, insertedText);
     }
 
     /**
-     * Converts {@link Component} to {@link Tag}.
+     * Converts {@link Text} to {@link NbtElement}.
      * @param text text to convert.
      * @return NbtElement generated from text.
      */
-    public static Tag toNbtElement(Component text) {
-        JsonElement json = JsonParser.parseString(Component.Serializer.toJson(text));
+    public static NbtElement toNbtElement(Text text) {
+        JsonElement json = JsonParser.parseString(Text.Serializer.toJson(text));
         return JsonOps.INSTANCE.convertTo(NbtOps.INSTANCE, json);
     }
 
     /**
-     * Creates a {@link MutableComponent} from {@link Tag}.
+     * Creates a {@link MutableText} from {@link NbtElement}.
      * @param textNbtElement text nbt to convert to text
      * @return mutable text object..
      */
-    public static MutableComponent fromNbtElement(Tag textNbtElement) {
+    public static MutableText fromNbtElement(NbtElement textNbtElement) {
         JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, textNbtElement);
-        return Component.Serializer.fromJson(json);
+        return Text.Serializer.fromJson(json);
     }
 
     /**
      * Gets the text for the given language key.
      *
      * @param key lang key.
-     * @return {@link TranslatableContents} or {@link LiteralContents} depending on whether SERVER_TRANSLATIONS is loaded.
+     * @return {@link TranslatableTextContent} or {@link LiteralTextContent} depending on whether SERVER_TRANSLATIONS is loaded.
      */
-    public static MutableComponent translate(String key, Object... args) {
+    public static MutableText translate(String key, Object... args) {
         if(SERVER_TRANSLATIONS_LOADED) {
-            return Component.translatable(key, args);
+            return Text.translatable(key, args);
         }
 
         String translation;
@@ -70,7 +69,7 @@ public class TextUtil {
             translation = lang.get(key).getAsString();
         else
             translation = key;
-        return Component.translatable(translation, args);
+        return Text.translatable(translation, args);
     }
 
 }

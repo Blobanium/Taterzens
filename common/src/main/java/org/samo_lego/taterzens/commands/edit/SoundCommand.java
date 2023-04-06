@@ -4,24 +4,24 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
-import net.minecraft.commands.synchronization.SuggestionProviders;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.commands.NpcCommand;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.command.suggestion.SuggestionProviders;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandManager.literal;
 import static org.samo_lego.taterzens.Taterzens.config;
 import static org.samo_lego.taterzens.util.TextUtil.errorText;
 import static org.samo_lego.taterzens.util.TextUtil.successText;
@@ -29,9 +29,9 @@ import static org.samo_lego.taterzens.util.TextUtil.translate;
 
 public class SoundCommand {
 
-    public static void registerNode(LiteralCommandNode<CommandSourceStack> editNode)
+    public static void registerNode(LiteralCommandNode<ServerCommandSource> editNode)
     {
-        LiteralCommandNode<CommandSourceStack> soundNode = literal("sounds")
+        LiteralCommandNode<ServerCommandSource> soundNode = literal("sounds")
             .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.npc.edit.sounds", config.perms.npcCommandPermissionLevel))
             .then(literal("list")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzen.npc.edit.sounds.list", config.perms.npcCommandPermissionLevel))
@@ -51,19 +51,19 @@ public class SoundCommand {
             .then(literal("add")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzen.npc.edit.sounds.add", config.perms.npcCommandPermissionLevel))
                     .then(literal("ambient")
-                        .then(argument("ambientSound", ResourceLocationArgument.id())
+                        .then(argument("ambientSound", IdentifierArgumentType.identifier())
                             .suggests(SuggestionProviders.AVAILABLE_SOUNDS)
                             .executes(SoundCommand::addAmbientSound)
                         )
                     )
                     .then(literal("hurt")
-                        .then(argument("hurtSound", ResourceLocationArgument.id())
+                        .then(argument("hurtSound", IdentifierArgumentType.identifier())
                             .suggests(SuggestionProviders.AVAILABLE_SOUNDS)
                             .executes(SoundCommand::addHurtSound)
                         )
                     )
                     .then(literal("death")
-                        .then(argument("deathSound", ResourceLocationArgument.id())
+                        .then(argument("deathSound", IdentifierArgumentType.identifier())
                             .suggests(SuggestionProviders.AVAILABLE_SOUNDS)
                             .executes(SoundCommand::addDeathSound)
                         )
@@ -80,13 +80,13 @@ public class SoundCommand {
                     )
                     .then(literal("index")
                         .then(argument("index", IntegerArgumentType.integer(1))
-                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(getAvailableAmbientSoundIndices(context), builder))
+                            .suggests((context, builder) -> CommandSource.suggestMatching(getAvailableAmbientSoundIndices(context), builder))
                             .executes(SoundCommand::removeAmbientSoundByIndex)
                         )
                     )
                     .then(literal("resource")
-                        .then(argument("resource", ResourceLocationArgument.id())
-                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(getAvailableAmbientSounds(context), builder))
+                        .then(argument("resource", IdentifierArgumentType.identifier())
+                            .suggests((context, builder) -> CommandSource.suggestMatching(getAvailableAmbientSounds(context), builder))
                             .executes(SoundCommand::removeAmbientSoundByResource)
                         )
                     )
@@ -97,13 +97,13 @@ public class SoundCommand {
                     )
                     .then(literal("index")
                         .then(argument("index", IntegerArgumentType.integer(1))
-                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(getAvailableHurtSoundIndices(context), builder))
+                            .suggests((context, builder) -> CommandSource.suggestMatching(getAvailableHurtSoundIndices(context), builder))
                             .executes(SoundCommand::removeHurtSoundByIndex)
                         )
                     )
                     .then(literal("resource")
-                        .then(argument("resource", ResourceLocationArgument.id())
-                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(getAvailableHurtSounds(context), builder))
+                        .then(argument("resource", IdentifierArgumentType.identifier())
+                            .suggests((context, builder) -> CommandSource.suggestMatching(getAvailableHurtSounds(context), builder))
                             .executes(SoundCommand::removeHurtSoundByResource)
                         )
                     )
@@ -114,13 +114,13 @@ public class SoundCommand {
                     )
                     .then(literal("index")
                         .then(argument("index", IntegerArgumentType.integer(1))
-                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(getAvailableDeathSoundIndices(context), builder))
+                            .suggests((context, builder) -> CommandSource.suggestMatching(getAvailableDeathSoundIndices(context), builder))
                             .executes(SoundCommand::removeDeathSoundByIndex)
                         )
                     )
                     .then(literal("resource")
-                        .then(argument("resource", ResourceLocationArgument.id())
-                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(getAvailableDeathSounds(context), builder))
+                        .then(argument("resource", IdentifierArgumentType.identifier())
+                            .suggests((context, builder) -> CommandSource.suggestMatching(getAvailableDeathSounds(context), builder))
                             .executes(SoundCommand::removeDeathSoundByResource)
                         )
                     )
@@ -131,10 +131,10 @@ public class SoundCommand {
         editNode.addChild(soundNode);
     }
 
-    private static String[] getAvailableAmbientSoundIndices(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static String[] getAvailableAmbientSoundIndices(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         AtomicReference<ArrayList<String>> ambientSounds = new AtomicReference<>();
 
@@ -155,10 +155,10 @@ public class SoundCommand {
         }
     }
 
-    private static String[] getAvailableHurtSoundIndices(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static String[] getAvailableHurtSoundIndices(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         AtomicReference<ArrayList<String>> hurtSounds = new AtomicReference<>();
 
@@ -179,10 +179,10 @@ public class SoundCommand {
         }
     }
 
-    private static String[] getAvailableDeathSoundIndices(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static String[] getAvailableDeathSoundIndices(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         AtomicReference<ArrayList<String>> deathSounds = new AtomicReference<>();
 
@@ -203,9 +203,9 @@ public class SoundCommand {
         }
     }
 
-    private static String[] getAvailableAmbientSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+    private static String[] getAvailableAmbientSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         AtomicReference<ArrayList<String>> ambientSounds = new AtomicReference<>();
 
@@ -215,9 +215,9 @@ public class SoundCommand {
         return ambientSounds.get().toArray(new String[0]);
     }
 
-    private static String[] getAvailableHurtSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+    private static String[] getAvailableHurtSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         AtomicReference<ArrayList<String>> hurtSounds = new AtomicReference<>();
 
@@ -227,9 +227,9 @@ public class SoundCommand {
         return hurtSounds.get().toArray(new String[0]);
     }
 
-    private static String[] getAvailableDeathSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+    private static String[] getAvailableDeathSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         AtomicReference<ArrayList<String>> deathSounds = new AtomicReference<>();
 
@@ -238,34 +238,34 @@ public class SoundCommand {
 
         return deathSounds.get().toArray(new String[0]);
     }
-    private static int removeAllSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+    private static int removeAllSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         return removeAllAmbientSounds(context) + removeAllHurtSounds(context) + removeAllDeathSounds(context) == 3 ? 1 : 0;
     }
 
-    private static int removeAllAmbientSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeAllAmbientSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         int result = NpcCommand.selectedTaterzenExecutor(player,
             taterzen -> taterzen.setAmbientSoundData(new ArrayList<>()));
 
         if (result == 1) {
-            source.sendSuccess(successText("taterzens.command.sounds.remove.all.success",
+            source.sendFeedback(successText("taterzens.command.sounds.remove.all.success",
                 translate("taterzens.command.sounds.ambient").getString()), false);
         }
         else {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.all.failure",
+            source.sendError(errorText("taterzens.command.sounds.remove.all.failure",
                 translate("taterzens.command.sounds.ambient").getString()));
         }
 
         return result;
     }
 
-    private static int removeAmbientSoundByIndex(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeAmbientSoundByIndex(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
         int idx = IntegerArgumentType.getInteger(context, "index") - 1;
         AtomicReference<String> soundResource = new AtomicReference<>("");
 
@@ -277,18 +277,18 @@ public class SoundCommand {
                 {
                     soundResource.set(taterzen.getAmbientSoundData().get(idx));
                     taterzen.removeAmbientSound(idx);
-                    source.sendSuccess(successText("taterzens.command.sounds.remove.success", soundResource.get()), false);
+                    source.sendFeedback(successText("taterzens.command.sounds.remove.success", soundResource.get()), false);
                 }
                 else
                 {
-                    source.sendSuccess(successText("taterzens.command.sounds.list.empty"), false);
+                    source.sendFeedback(successText("taterzens.command.sounds.list.empty"), false);
                 }
 
                 success.set(true);
             }
             catch (IndexOutOfBoundsException err)
             {
-                source.sendFailure(errorText("taterzens.command.sounds.remove.outofbounds",
+                source.sendError(errorText("taterzens.command.sounds.remove.outofbounds",
                     Integer.toString(idx + 1),
                     "1",
                     Integer.toString(taterzen.getAmbientSoundData().size()))
@@ -303,17 +303,17 @@ public class SoundCommand {
         }
         else
         {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.failure", soundResource.get()));
+            source.sendError(errorText("taterzens.command.sounds.remove.failure", soundResource.get()));
             return 0;
         }
     }
 
-    private static int removeAmbientSoundByResource(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeAmbientSoundByResource(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
         //String resource = StringArgumentType.getString(context, "resource");
-        String resource = ResourceLocationArgument.getId(context, "resource").toString();
+        String resource = IdentifierArgumentType.getIdentifier(context, "resource").toString();
 
         AtomicReference<ArrayList<String>> soundData = new AtomicReference<>();
         AtomicBoolean success = new AtomicBoolean(false);
@@ -326,12 +326,12 @@ public class SoundCommand {
             if (idx >= 0)
             {
                 taterzen.removeAmbientSound(idx);
-                source.sendSuccess(successText("taterzens.command.sounds.remove.success", resource), false);
+                source.sendFeedback(successText("taterzens.command.sounds.remove.success", resource), false);
                 success.set(true);
             }
             else
             {
-                source.sendFailure(errorText("taterzens.command.sounds.404",
+                source.sendError(errorText("taterzens.command.sounds.404",
                     resource,
                     translate("taterzens.command.sounds.ambient").getString())
                 );
@@ -344,35 +344,35 @@ public class SoundCommand {
             return 1;
         }
         else {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.failure", resource));
+            source.sendError(errorText("taterzens.command.sounds.remove.failure", resource));
             return 0;
         }
     }
 
-    private static int removeAllHurtSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeAllHurtSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         int result = NpcCommand.selectedTaterzenExecutor(player,
             taterzen -> taterzen.setHurtSoundData(new ArrayList<>()));
 
         if (result == 1) {
-            source.sendSuccess(successText("taterzens.command.sounds.remove.all.success",
+            source.sendFeedback(successText("taterzens.command.sounds.remove.all.success",
                     translate("taterzens.command.sounds.hurt").getString()), false);
         }
         else {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.all.failure",
+            source.sendError(errorText("taterzens.command.sounds.remove.all.failure",
                     translate("taterzens.command.sounds.hurt").getString()));
         }
 
         return result;
     }
 
-    private static int removeHurtSoundByIndex(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeHurtSoundByIndex(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
         int idx = IntegerArgumentType.getInteger(context, "index") - 1;
         AtomicReference<String> soundResource = new AtomicReference<>("");
 
@@ -384,18 +384,18 @@ public class SoundCommand {
                 {
                     soundResource.set(taterzen.getHurtSoundData().get(idx));
                     taterzen.removeHurtSound(idx);
-                    source.sendSuccess(successText("taterzens.command.sounds.remove.success", soundResource.get()), false);
+                    source.sendFeedback(successText("taterzens.command.sounds.remove.success", soundResource.get()), false);
                 }
                 else
                 {
-                    source.sendSuccess(successText("taterzens.command.sounds.list.empty"), false);
+                    source.sendFeedback(successText("taterzens.command.sounds.list.empty"), false);
                 }
 
                 success.set(true);
             }
             catch (IndexOutOfBoundsException err)
             {
-                source.sendFailure(errorText("taterzens.command.sounds.remove.outofbounds",
+                source.sendError(errorText("taterzens.command.sounds.remove.outofbounds",
                         Integer.toString(idx + 1),
                         "1",
                         Integer.toString(taterzen.getHurtSoundData().size()))
@@ -410,16 +410,16 @@ public class SoundCommand {
         }
         else
         {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.failure", soundResource.get()));
+            source.sendError(errorText("taterzens.command.sounds.remove.failure", soundResource.get()));
             return 0;
         }
     }
 
-    private static int removeHurtSoundByResource(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeHurtSoundByResource(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
-        String resource = ResourceLocationArgument.getId(context, "resource").toString();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+        String resource = IdentifierArgumentType.getIdentifier(context, "resource").toString();
 
         AtomicReference<ArrayList<String>> soundData = new AtomicReference<>();
         AtomicBoolean success = new AtomicBoolean(false);
@@ -432,12 +432,12 @@ public class SoundCommand {
             if (idx >= 0)
             {
                 taterzen.removeHurtSound(idx);
-                source.sendSuccess(successText("taterzens.command.sounds.remove.success", resource), false);
+                source.sendFeedback(successText("taterzens.command.sounds.remove.success", resource), false);
                 success.set(true);
             }
             else
             {
-                source.sendFailure(errorText("taterzens.command.sounds.404",
+                source.sendError(errorText("taterzens.command.sounds.404",
                         resource,
                         translate("taterzens.command.sounds.hurt").getString())
                 );
@@ -450,35 +450,35 @@ public class SoundCommand {
             return 1;
         }
         else {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.failure", resource));
+            source.sendError(errorText("taterzens.command.sounds.remove.failure", resource));
             return 0;
         }
     }
 
-    private static int removeAllDeathSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeAllDeathSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
         int result = NpcCommand.selectedTaterzenExecutor(player,
             taterzen -> taterzen.setDeathSoundData(new ArrayList<>()));
 
         if (result == 1) {
-            source.sendSuccess(successText("taterzens.command.sounds.remove.all.success",
+            source.sendFeedback(successText("taterzens.command.sounds.remove.all.success",
                     translate("taterzens.command.sounds.death").getString()), false);
         }
         else {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.all.failure",
+            source.sendError(errorText("taterzens.command.sounds.remove.all.failure",
                     translate("taterzens.command.sounds.death").getString()));
         }
 
         return result;
     }
 
-    private static int removeDeathSoundByIndex(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeDeathSoundByIndex(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
         int idx = IntegerArgumentType.getInteger(context, "index") - 1;
         AtomicReference<String> soundResource = new AtomicReference<>("");
 
@@ -490,18 +490,18 @@ public class SoundCommand {
                 {
                     soundResource.set(taterzen.getDeathSoundData().get(idx));
                     taterzen.removeDeathSound(idx);
-                    source.sendSuccess(successText("taterzens.command.sounds.remove.success", soundResource.get()), false);
+                    source.sendFeedback(successText("taterzens.command.sounds.remove.success", soundResource.get()), false);
                 }
                 else
                 {
-                    source.sendSuccess(successText("taterzens.command.sounds.list.empty"), false);
+                    source.sendFeedback(successText("taterzens.command.sounds.list.empty"), false);
                 }
 
                 success.set(true);
             }
             catch (IndexOutOfBoundsException err)
             {
-                source.sendFailure(errorText("taterzens.command.sounds.remove.outofbounds",
+                source.sendError(errorText("taterzens.command.sounds.remove.outofbounds",
                         Integer.toString(idx + 1),
                         "1",
                         Integer.toString(taterzen.getDeathSoundData().size()))
@@ -516,16 +516,16 @@ public class SoundCommand {
         }
         else
         {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.failure", soundResource.get()));
+            source.sendError(errorText("taterzens.command.sounds.remove.failure", soundResource.get()));
             return 0;
         }
     }
 
-    private static int removeDeathSoundByResource(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int removeDeathSoundByResource(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
-        String resource = ResourceLocationArgument.getId(context, "resource").toString();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+        String resource = IdentifierArgumentType.getIdentifier(context, "resource").toString();
 
         AtomicReference<ArrayList<String>> soundData = new AtomicReference<>();
         AtomicBoolean success = new AtomicBoolean(false);
@@ -538,12 +538,12 @@ public class SoundCommand {
             if (idx >= 0)
             {
                 taterzen.removeDeathSound(idx);
-                source.sendSuccess(successText("taterzens.command.sounds.remove.success", resource), false);
+                source.sendFeedback(successText("taterzens.command.sounds.remove.success", resource), false);
                 success.set(true);
             }
             else
             {
-                source.sendFailure(errorText("taterzens.command.sounds.404",
+                source.sendError(errorText("taterzens.command.sounds.404",
                         resource,
                         translate("taterzens.command.sounds.death").getString())
                 );
@@ -556,20 +556,20 @@ public class SoundCommand {
             return 1;
         }
         else {
-            source.sendFailure(errorText("taterzens.command.sounds.remove.failure", resource));
+            source.sendError(errorText("taterzens.command.sounds.remove.failure", resource));
             return 0;
         }
     }
 
-    private static int addAmbientSound(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int addAmbientSound(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
-        String soundResource = ResourceLocationArgument.getId(context, "ambientSound").toString();
-        if (!ResourceLocation.isValidResourceLocation(soundResource))
+        String soundResource = IdentifierArgumentType.getIdentifier(context, "ambientSound").toString();
+        if (!Identifier.isValid(soundResource))
         {
-            source.sendFailure(errorText("taterzens.command.sounds.invalid"));
+            source.sendError(errorText("taterzens.command.sounds.invalid"));
             return 0;
         }
         else
@@ -578,25 +578,25 @@ public class SoundCommand {
                 taterzen -> taterzen.addAmbientSound(soundResource));
 
             if (result == 1) {
-                source.sendSuccess(successText("taterzens.command.sounds.add.success", soundResource), false);
+                source.sendFeedback(successText("taterzens.command.sounds.add.success", soundResource), false);
             }
             else {// if 0 or anything else
-                source.sendFailure(errorText("taterzens.command.sounds.add.failure", soundResource));
+                source.sendError(errorText("taterzens.command.sounds.add.failure", soundResource));
             }
 
             return result;
         }
     }
 
-    private static int addHurtSound(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int addHurtSound(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
-        String soundResource = ResourceLocationArgument.getId(context, "hurtSound").toString();
-        if (!ResourceLocation.isValidResourceLocation(soundResource))
+        String soundResource = IdentifierArgumentType.getIdentifier(context, "hurtSound").toString();
+        if (!Identifier.isValid(soundResource))
         {
-            source.sendFailure(errorText("taterzens.command.sounds.invalid"));
+            source.sendError(errorText("taterzens.command.sounds.invalid"));
             return 0;
         }
         else
@@ -605,24 +605,24 @@ public class SoundCommand {
                 taterzen -> taterzen.addHurtSound(soundResource));
 
             if (result == 1) {
-                source.sendSuccess(successText("taterzens.command.sounds.add.success", soundResource), false);
+                source.sendFeedback(successText("taterzens.command.sounds.add.success", soundResource), false);
             }
             else { // if 0 or anything else
-                source.sendFailure(errorText("taterzens.command.sounds.add.failure", soundResource));
+                source.sendError(errorText("taterzens.command.sounds.add.failure", soundResource));
             }
 
             return result;
         }
     }
 
-    private static int addDeathSound(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+    private static int addDeathSound(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
-        String soundResource = ResourceLocationArgument.getId(context, "deathSound").toString();
-        if (!ResourceLocation.isValidResourceLocation(soundResource))
+        String soundResource = IdentifierArgumentType.getIdentifier(context, "deathSound").toString();
+        if (!Identifier.isValid(soundResource))
         {
-            source.sendFailure(errorText("taterzens.command.sounds.invalid"));
+            source.sendError(errorText("taterzens.command.sounds.invalid"));
             return 0;
         }
         else
@@ -631,27 +631,27 @@ public class SoundCommand {
                 taterzen -> taterzen.addDeathSound(soundResource));
 
             if (result == 1) {
-                source.sendSuccess(successText("taterzens.command.sounds.add.success", soundResource), false);
+                source.sendFeedback(successText("taterzens.command.sounds.add.success", soundResource), false);
             }
             else { // if 0 or anything else
-                source.sendFailure(errorText("taterzens.command.sounds.add.failure", soundResource));
+                source.sendError(errorText("taterzens.command.sounds.add.failure", soundResource));
             }
 
             return result;
         }
     }
 
-    private static int listAllSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int listAllSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
         return listAmbientSounds(context) + listHurtSounds(context) + listDeathSounds(context) == 3 ? 1 : 0;
     }
     
-    private static int listAmbientSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int listAmbientSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
-        MutableComponent response = translate("taterzens.command.sounds.list.ambient").withStyle(ChatFormatting.AQUA);
+        MutableText response = translate("taterzens.command.sounds.list.ambient").formatted(Formatting.AQUA);
 
         return NpcCommand.selectedTaterzenExecutor(player, taterzen -> {
 
@@ -662,29 +662,29 @@ public class SoundCommand {
                     int idx = i + 1;
 
                     response.append(
-                            Component.literal("\n" + idx + ": " + ambientSounds.get(i))
-                            .withStyle(i % 2 == 0 ? ChatFormatting.DARK_GREEN : ChatFormatting.DARK_BLUE)
+                            Text.literal("\n" + idx + ": " + ambientSounds.get(i))
+                            .formatted(i % 2 == 0 ? Formatting.DARK_GREEN : Formatting.DARK_BLUE)
                     );
                 }
             }
             else
             {
                 response.append(
-                        Component.literal(" " + translate("taterzens.command.sounds.list.empty").getString())
-                            .withStyle(ChatFormatting.YELLOW)
+                        Text.literal(" " + translate("taterzens.command.sounds.list.empty").getString())
+                            .formatted(Formatting.YELLOW)
                 );
             }
 
-            source.sendSuccess(response, false);
+            source.sendFeedback(response, false);
         });
     }
 
-    private static int listHurtSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int listHurtSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
-        MutableComponent response = translate("taterzens.command.sounds.list.hurt").withStyle(ChatFormatting.AQUA);
+        MutableText response = translate("taterzens.command.sounds.list.hurt").formatted(Formatting.AQUA);
 
         return NpcCommand.selectedTaterzenExecutor(player, taterzen -> {
 
@@ -695,29 +695,29 @@ public class SoundCommand {
                     int idx = i + 1;
 
                     response.append(
-                            Component.literal("\n" + idx + ": " + hurtSounds.get(i))
-                                    .withStyle(i % 2 == 0 ? ChatFormatting.DARK_GREEN : ChatFormatting.DARK_BLUE)
+                            Text.literal("\n" + idx + ": " + hurtSounds.get(i))
+                                    .formatted(i % 2 == 0 ? Formatting.DARK_GREEN : Formatting.DARK_BLUE)
                     );
                 }
             }
             else
             {
                 response.append(
-                        Component.literal(" " + translate("taterzens.command.sounds.list.empty").getString())
-                                .withStyle(ChatFormatting.YELLOW)
+                        Text.literal(" " + translate("taterzens.command.sounds.list.empty").getString())
+                                .formatted(Formatting.YELLOW)
                 );
             }
 
-            source.sendSuccess(response, false);
+            source.sendFeedback(response, false);
         });
     }
 
-    private static int listDeathSounds(CommandContext<CommandSourceStack> context) throws CommandSyntaxException
+    private static int listDeathSounds(CommandContext<ServerCommandSource> context) throws CommandSyntaxException
     {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
 
-        MutableComponent response = translate("taterzens.command.sounds.list.death").withStyle(ChatFormatting.AQUA);
+        MutableText response = translate("taterzens.command.sounds.list.death").formatted(Formatting.AQUA);
 
         return NpcCommand.selectedTaterzenExecutor(player, taterzen -> {
 
@@ -728,20 +728,20 @@ public class SoundCommand {
                     int idx = i + 1;
 
                     response.append(
-                            Component.literal("\n" + idx + ": " + deathSounds.get(i))
-                                    .withStyle(i % 2 == 0 ? ChatFormatting.DARK_GREEN : ChatFormatting.DARK_BLUE)
+                            Text.literal("\n" + idx + ": " + deathSounds.get(i))
+                                    .formatted(i % 2 == 0 ? Formatting.DARK_GREEN : Formatting.DARK_BLUE)
                     );
                 }
             }
             else
             {
                 response.append(
-                        Component.literal(" " + translate("taterzens.command.sounds.list.empty").getString())
-                                .withStyle(ChatFormatting.YELLOW)
+                        Text.literal(" " + translate("taterzens.command.sounds.list.empty").getString())
+                                .formatted(Formatting.YELLOW)
                 );
             }
 
-            source.sendSuccess(response, false);
+            source.sendFeedback(response, false);
         });
     }
 

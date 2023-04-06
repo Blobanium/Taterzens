@@ -4,13 +4,13 @@ import eu.pb4.sgui.api.gui.SimpleGui;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntityDimensions;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
+import net.minecraft.entity.EntityDimensions;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.SpawnGroup;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
 import org.samo_lego.taterzens.fabric.mixin.AMappedRegistry;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 import org.samo_lego.taterzens.platform.Platform;
@@ -25,7 +25,7 @@ import static org.samo_lego.taterzens.fabric.gui.EditorGUI.createCommandGui;
 
 public class FabricPlatform extends Platform {
 
-    private static final int REGISTRY_ITEMS_SIZE = ((AMappedRegistry<?>) BuiltInRegistries.ITEM).getById().size();
+    private static final int REGISTRY_ITEMS_SIZE = ((AMappedRegistry<?>) Registries.ITEM).getById().size();
 
     @Override
     public Path getConfigDirPath() {
@@ -54,7 +54,7 @@ public class FabricPlatform extends Platform {
      * @return true if commandSource has the permission, otherwise false
      */
     @Override
-    public boolean checkPermission(CommandSourceStack commandSource, String permission, int fallbackLevel) {
+    public boolean checkPermission(ServerCommandSource commandSource, String permission, int fallbackLevel) {
         // Enable command blocks, therefore null check
         return commandSource.getEntity() == null || Permissions.check(commandSource, permission, fallbackLevel);
     }
@@ -63,18 +63,18 @@ public class FabricPlatform extends Platform {
     @Override
     public void registerTaterzenType() {
         final EntityType<TaterzenNPC> type = Registry.register(
-                BuiltInRegistries.ENTITY_TYPE,
+                Registries.ENTITY_TYPE,
                 NPC_ID,
                 FabricEntityTypeBuilder
-                        .<TaterzenNPC>create(MobCategory.MISC, TaterzenNPC::new)
-                        .dimensions(EntityDimensions.scalable(0.6F, 1.8F))
+                        .<TaterzenNPC>create(SpawnGroup.MISC, TaterzenNPC::new)
+                        .dimensions(EntityDimensions.changing(0.6F, 1.8F))
                         .build());
 
         TATERZEN_TYPE = () -> type;
     }
 
     @Override
-    public void openEditorGui(ServerPlayer player) {
+    public void openEditorGui(ServerPlayerEntity player) {
         SimpleGui editorGUI = createCommandGui(player, null, npcNode, Collections.singletonList("npc"), false);
         editorGUI.open();
     }

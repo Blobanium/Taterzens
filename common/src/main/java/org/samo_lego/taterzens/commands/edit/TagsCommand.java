@@ -4,25 +4,25 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.Pose;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.commands.NpcCommand;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 import java.util.function.Consumer;
+import net.minecraft.entity.EntityPose;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandManager.literal;
 import static org.samo_lego.taterzens.Taterzens.config;
 import static org.samo_lego.taterzens.util.TextUtil.joinText;
 import static org.samo_lego.taterzens.util.TextUtil.successText;
 
 public class TagsCommand {
-    public static void registerNode(LiteralCommandNode<CommandSourceStack> editNode) {
-        LiteralCommandNode<CommandSourceStack> tagsNode = literal("tags")
+    public static void registerNode(LiteralCommandNode<ServerCommandSource> editNode) {
+        LiteralCommandNode<ServerCommandSource> tagsNode = literal("tags")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.npc.edit.tags", config.perms.npcCommandPermissionLevel))
                 .then(literal("leashable")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.npc.edit.tags.leashable", config.perms.npcCommandPermissionLevel))
@@ -78,7 +78,7 @@ public class TagsCommand {
                         .then(argument("sneak type name", BoolArgumentType.bool())
                                 .executes(ctx -> {
                                     boolean sneakNameType = BoolArgumentType.getBool(ctx, "sneak type name");
-                                    return setTag(ctx, "sneakNameType", sneakNameType, npc -> npc.setShiftKeyDown(sneakNameType));
+                                    return setTag(ctx, "sneakNameType", sneakNameType, npc -> npc.setSneaking(sneakNameType));
                                 })
                         )
                 )
@@ -102,25 +102,25 @@ public class TagsCommand {
         editNode.addChild(tagsNode);
     }
 
-    private static int editNameVisibility(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+    private static int editNameVisibility(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         boolean showName = BoolArgumentType.getBool(context, "show custom name");
-        CommandSourceStack source = context.getSource();
-        final Pose POSE = Pose.SPIN_ATTACK;
+        ServerCommandSource source = context.getSource();
+        final EntityPose POSE = EntityPose.SPIN_ATTACK;
         return setTag(context, "showCustomName", showName, npc -> {
-            npc.setPose(showName ? Pose.STANDING : POSE);
+            npc.setPose(showName ? EntityPose.STANDING : POSE);
 
             String oldName = npc.getName().getString();
-            npc.setShiftKeyDown(!showName);
+            npc.setSneaking(!showName);
 
             if(!showName) {
                 String newName = String.valueOf(oldName.toCharArray()[0]);
-                npc.setCustomName(Component.literal(newName));
+                npc.setCustomName(Text.literal(newName));
 
-                source.sendSuccess(
-                        joinText("taterzens.command.tags.hide_name_hint.desc.1", ChatFormatting.GOLD, ChatFormatting.BLUE, newName, POSE.toString())
+                source.sendFeedback(
+                        joinText("taterzens.command.tags.hide_name_hint.desc.1", Formatting.GOLD, Formatting.BLUE, newName, POSE.toString())
                                 .append("\n")
-                                .append(joinText("taterzens.command.tags.hide_name_hint.desc.2", ChatFormatting.GOLD, ChatFormatting.BLUE, oldName))
-                                .withStyle(ChatFormatting.GOLD),
+                                .append(joinText("taterzens.command.tags.hide_name_hint.desc.2", Formatting.GOLD, Formatting.BLUE, oldName))
+                                .formatted(Formatting.GOLD),
                         false
                 );
             }
@@ -128,11 +128,11 @@ public class TagsCommand {
         });
     }
 
-    public static int setTag(CommandContext<CommandSourceStack> context, String flagName, boolean flagValue, Consumer<TaterzenNPC> flag) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
+    public static int setTag(CommandContext<ServerCommandSource> context, String flagName, boolean flagValue, Consumer<TaterzenNPC> flag) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
             flag.accept(taterzen);
-            source.sendSuccess(successText("taterzens.command.tags.changed", flagName, String.valueOf(flagValue)), false);
+            source.sendFeedback(successText("taterzens.command.tags.changed", flagName, String.valueOf(flagValue)), false);
         });
     }
 }

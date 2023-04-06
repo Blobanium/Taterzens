@@ -1,11 +1,11 @@
 package org.samo_lego.taterzens.mixin.accessors;
 
-import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.command.ServerCommandSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(CommandSourceStack.class)
+@Mixin(ServerCommandSource.class)
 public interface ACommandSourceStack {
-    @Accessor("permissionLevel")
+    @Accessor("level")
     int getPermissionLevel();
 }

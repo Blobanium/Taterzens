@@ -5,7 +5,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.registry.Registries;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.fabric.commands.MessagesReorderCommand;
 import org.samo_lego.taterzens.fabric.compatibility.carpet.AdditionalFunctions;
@@ -44,6 +44,6 @@ public class TaterzensFabric implements ModInitializer {
         UseBlockCallback.EVENT.register(new BlockInteractEventImpl());
 
         // Mark as server-only registry entry
-        RegistrySyncUtils.setServerEntry(BuiltInRegistries.ENTITY_TYPE, TATERZEN_TYPE.get());
+        RegistrySyncUtils.setServerEntry(Registries.ENTITY_TYPE, TATERZEN_TYPE.get());
     }
 }

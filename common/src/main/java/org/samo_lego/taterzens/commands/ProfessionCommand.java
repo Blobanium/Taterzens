@@ -2,21 +2,21 @@ package org.samo_lego.taterzens.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.command.ServerCommandSource;
 import org.samo_lego.taterzens.Taterzens;
 
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.server.command.CommandManager.literal;
 import static org.samo_lego.taterzens.Taterzens.config;
 
 public class ProfessionCommand {
-    public static final LiteralCommandNode<CommandSourceStack> PROFESSION_COMMAND_NODE;
+    public static final LiteralCommandNode<ServerCommandSource> PROFESSION_COMMAND_NODE;
 
     /**
      * Registers "/profession" node. Can be used to manage scarpet professions,
      * or other professions if they hook into the node.
      * @param dispatcher command dispatcher
      */
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.getRoot().addChild(PROFESSION_COMMAND_NODE);
     }
 

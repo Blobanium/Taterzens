@@ -1,7 +1,5 @@
 package org.samo_lego.taterzens.mixin;
 
-import net.minecraft.server.level.ChunkMap;
-import net.minecraft.world.entity.Entity;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -10,17 +8,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import static org.samo_lego.taterzens.Taterzens.TATERZEN_NPCS;
 
-@Mixin(ChunkMap.class)
+import net.minecraft.entity.Entity;
+import net.minecraft.server.world.ThreadedAnvilChunkStorage;
+
+@Mixin(ThreadedAnvilChunkStorage.class)
 public class ChunkMapMixin_TaterzenList {
 
     /**
      * Sets Taterzen to {@link org.samo_lego.taterzens.Taterzens#TATERZEN_NPCS NPC list}.
      * @param entity entity being loaded
      */
-    @Inject(method = "addEntity(Lnet/minecraft/world/entity/Entity;)V", at = @At("TAIL"))
+    @Inject(method = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;loadEntity(Lnet/minecraft/entity/Entity;)V", at = @At("TAIL"))
     private void onEntityAdded(Entity entity, CallbackInfo ci) {
-        if (entity instanceof TaterzenNPC && !TATERZEN_NPCS.containsKey(entity.getUUID())) {
-            TATERZEN_NPCS.put(entity.getUUID(), (TaterzenNPC) entity);
+        if (entity instanceof TaterzenNPC && !TATERZEN_NPCS.containsKey(entity.getUuid())) {
+            TATERZEN_NPCS.put(entity.getUuid(), (TaterzenNPC) entity);
         }
     }
 
@@ -28,10 +29,10 @@ public class ChunkMapMixin_TaterzenList {
      * Unloads Taterzen from {@link org.samo_lego.taterzens.Taterzens#TATERZEN_NPCS NPC list}.
      * @param entity entity being unloaded
      */
-    @Inject(method = "removeEntity(Lnet/minecraft/world/entity/Entity;)V", at = @At("TAIL"))
+    @Inject(method = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;unloadEntity(Lnet/minecraft/entity/Entity;)V", at = @At("TAIL"))
     private void onEntityRemoved(Entity entity, CallbackInfo ci) {
         if (entity instanceof TaterzenNPC) {
-            TATERZEN_NPCS.remove(entity.getUUID());
+            TATERZEN_NPCS.remove(entity.getUuid());
         }
     }
 }

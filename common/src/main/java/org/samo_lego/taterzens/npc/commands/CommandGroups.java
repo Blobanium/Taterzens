@@ -1,12 +1,13 @@
 package org.samo_lego.taterzens.npc.commands;
 
 import com.google.common.collect.ImmutableList;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.server.level.ServerPlayer;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 import java.util.ArrayList;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 public class CommandGroups extends ArrayList<ArrayList<AbstractTaterzenCommand>> {
     private int groupIndex;
@@ -30,7 +31,7 @@ public class CommandGroups extends ArrayList<ArrayList<AbstractTaterzenCommand>>
         this.groupIndex = 0;
     }
 
-    public void execute(ServerPlayer player) {
+    public void execute(ServerPlayerEntity player) {
         if (this.isEmpty()) {
             return;
         }
@@ -46,28 +47,28 @@ public class CommandGroups extends ArrayList<ArrayList<AbstractTaterzenCommand>>
         ++this.groupIndex;
     }
 
-    public void toTag(CompoundTag tag) {
+    public void toTag(NbtCompound tag) {
         tag.putInt("GroupIndex", this.groupIndex);
-        var commands = new ListTag();
+        var commands = new NbtList();
 
         for (int i = 0; i < this.size(); ++i) {
             var cmds = this.get(i);
-            ListTag cmdList = new ListTag();
-            cmds.forEach(cmd -> cmdList.add(cmd.toTag(new CompoundTag())));
+            NbtList cmdList = new NbtList();
+            cmds.forEach(cmd -> cmdList.add(cmd.toTag(new NbtCompound())));
             commands.add(cmdList);
         }
         tag.put("Contents", commands);
     }
 
-    public void fromTag(CompoundTag tag) {
+    public void fromTag(NbtCompound tag) {
         this.groupIndex = tag.getInt("GroupIndex");
 
-        ListTag cmdsArray = (ListTag) tag.get("Contents");
+        NbtList cmdsArray = (NbtList) tag.get("Contents");
         if (cmdsArray != null) {
             for (var cmds : cmdsArray) {
                 var cmdList = new ArrayList<AbstractTaterzenCommand>();
-                for (var cmd : (ListTag) cmds) {
-                    var cmdTag = (CompoundTag) cmd;
+                for (var cmd : (NbtList) cmds) {
+                    var cmdTag = (NbtCompound) cmd;
 
                     AbstractTaterzenCommand toAdd;
                     if (AbstractTaterzenCommand.CommandType.valueOf(cmdTag.getString("Type")) == AbstractTaterzenCommand.CommandType.BUNGEE) {
@@ -84,22 +85,22 @@ public class CommandGroups extends ArrayList<ArrayList<AbstractTaterzenCommand>>
     }
 
     @Deprecated
-    public void fromOldTag(ListTag minecraftCommands, ListTag bungeeCommands) {
+    public void fromOldTag(NbtList minecraftCommands, NbtList bungeeCommands) {
         this.groupIndex = 0;
 
         // Commands
         var cmds = new ArrayList<AbstractTaterzenCommand>();
         if (minecraftCommands != null) {
-            minecraftCommands.forEach(cmdTag -> cmds.add(new MinecraftCommand(cmdTag.getAsString())));
+            minecraftCommands.forEach(cmdTag -> cmds.add(new MinecraftCommand(cmdTag.asString())));
         }
 
         // Bungee commands
         if (bungeeCommands != null) {
             bungeeCommands.forEach(cmdTag -> {
-                ListTag cmdList = (ListTag) cmdTag;
-                String command = cmdList.get(0).getAsString();
-                String player = cmdList.get(1).getAsString();
-                String argument = cmdList.get(2).getAsString();
+                NbtList cmdList = (NbtList) cmdTag;
+                String command = cmdList.get(0).asString();
+                String player = cmdList.get(1).asString();
+                String argument = cmdList.get(2).asString();
 
                 cmds.add(new BungeeCommand(BungeeCommand.BungeeMessage.valueOf(command), player, argument));
             });

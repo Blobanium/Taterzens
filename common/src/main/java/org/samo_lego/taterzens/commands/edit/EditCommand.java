@@ -2,17 +2,17 @@ package org.samo_lego.taterzens.commands.edit;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.commands.CommandBuildContext;
-import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.server.command.ServerCommandSource;
 import org.samo_lego.taterzens.commands.edit.commands.CommandsCommand;
 import org.samo_lego.taterzens.commands.edit.messages.MessagesCommand;
 
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.server.command.CommandManager.literal;
 
 public class EditCommand {
 
-    public static void registerNode(CommandDispatcher<CommandSourceStack> dispatcher, LiteralCommandNode<CommandSourceStack> npcNode, CommandBuildContext commandBuildContext) {
-        LiteralCommandNode<CommandSourceStack> editNode = literal("edit")
+    public static void registerNode(CommandDispatcher<ServerCommandSource> dispatcher, LiteralCommandNode<ServerCommandSource> npcNode, CommandRegistryAccess commandBuildContext) {
+        LiteralCommandNode<ServerCommandSource> editNode = literal("edit")
                 .build();
 
         npcNode.addChild(editNode);

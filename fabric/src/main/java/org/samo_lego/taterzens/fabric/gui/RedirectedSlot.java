@@ -1,20 +1,20 @@
 package org.samo_lego.taterzens.fabric.gui;
 
-import net.minecraft.world.Container;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.screen.slot.Slot;
 
 public class RedirectedSlot extends Slot {
-    public RedirectedSlot(Container container, int index) {
+    public RedirectedSlot(Inventory container, int index) {
         super(container, index, 0, 0);
     }
 
     @Override
-    public boolean mayPickup(Player player) {
-        ItemStack carried = player.containerMenu.getCarried();
+    public boolean canTakeItems(PlayerEntity player) {
+        ItemStack carried = player.currentScreenHandler.getCursorStack();
         if (!carried.isEmpty()) {
-            this.set(carried);
+            this.setStackNoCallbacks(carried);
             carried.setCount(0);
             return false;
         }

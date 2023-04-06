@@ -1,11 +1,11 @@
 package org.samo_lego.taterzens.event;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.samo_lego.taterzens.interfaces.ITaterzenEditor;
 
 public class BlockEvent {
@@ -20,16 +20,16 @@ public class BlockEvent {
      *
      * @return FAIL if player has selected NPC and is in path edit mode, otherwise PASS.
      */
-    public static InteractionResult onBlockInteract(Player Player, Level world, BlockPos blockPos) {
-        if(Player instanceof ServerPlayer) { // Prevents crash on client
+    public static ActionResult onBlockInteract(PlayerEntity Player, World world, BlockPos blockPos) {
+        if(Player instanceof ServerPlayerEntity) { // Prevents crash on client
             ITaterzenEditor player = (ITaterzenEditor) Player;
             if(player.getNpc() != null && ((ITaterzenEditor) Player).getEditorMode() == ITaterzenEditor.EditorMode.PATH) {
                 player.getNpc().removePathTarget(blockPos);
-                ((ServerPlayer) player).connection.send(new ClientboundBlockUpdatePacket(blockPos, world.getBlockState(blockPos)));
-                return InteractionResult.FAIL;
+                ((ServerPlayerEntity) player).networkHandler.sendPacket(new BlockUpdateS2CPacket(blockPos, world.getBlockState(blockPos)));
+                return ActionResult.FAIL;
             }
         }
 
-        return InteractionResult.PASS;
+        return ActionResult.PASS;
     }
 }

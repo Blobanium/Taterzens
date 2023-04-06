@@ -7,13 +7,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.api.TaterzensAPI;
 import org.samo_lego.taterzens.api.professions.TaterzenProfession;
@@ -24,9 +17,16 @@ import org.samo_lego.taterzens.npc.TaterzenNPC;
 import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.command.CommandSource;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandManager.literal;
 import static org.samo_lego.taterzens.Taterzens.config;
 import static org.samo_lego.taterzens.commands.ProfessionCommand.PROFESSION_COMMAND_NODE;
 import static org.samo_lego.taterzens.compatibility.ModDiscovery.CARPETMOD_LOADED;
@@ -41,7 +41,7 @@ public class ScarpetTraitCommand {
     }
 
     public static void register() {
-        LiteralCommandNode<CommandSourceStack> scarpet = literal("scarpetTraits")
+        LiteralCommandNode<ServerCommandSource> scarpet = literal("scarpetTraits")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.profession.scarpet", config.perms.professionCommandPL))
                 .then(literal("add")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.profession.scarpet.add", config.perms.professionCommandPL))
@@ -67,14 +67,14 @@ public class ScarpetTraitCommand {
     }
 
 
-    private static int listScarpetTraits(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
+    private static int listScarpetTraits(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
             TaterzenProfession profession = taterzen.getProfession(ScarpetProfession.ID);
             if (profession instanceof ScarpetProfession scarpetProfession) {
                 HashSet<Value> traitIds = scarpetProfession.getTraits();
 
-                MutableComponent response = joinText("taterzens.command.trait.list", ChatFormatting.AQUA, ChatFormatting.YELLOW, taterzen.getName().getString());
+                MutableText response = joinText("taterzens.command.trait.list", Formatting.AQUA, Formatting.YELLOW, taterzen.getName().getString());
                 AtomicInteger i = new AtomicInteger();
 
                 traitIds.forEach(trait -> {
@@ -82,66 +82,66 @@ public class ScarpetTraitCommand {
 
                     String id = trait.getString();
                     response.append(
-                            Component.literal("\n" + index + "-> " + id + " (")
-                                    .withStyle(index % 2 == 0 ? ChatFormatting.YELLOW : ChatFormatting.GOLD)
+                            Text.literal("\n" + index + "-> " + id + " (")
+                                    .formatted(index % 2 == 0 ? Formatting.YELLOW : Formatting.GOLD)
                                     .append(
-                                            Component.literal("X")
-                                                    .withStyle(ChatFormatting.RED)
-                                                    .withStyle(ChatFormatting.BOLD)
-                                                    .withStyle(style -> style
+                                            Text.literal("X")
+                                                    .formatted(Formatting.RED)
+                                                    .formatted(Formatting.BOLD)
+                                                    .styled(style -> style
                                                             .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, translate("taterzens.tooltip.delete", id)))
                                                             .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/trait scarpet remove " + id))
                                                     )
                                     )
-                                    .append(Component.literal(")").withStyle(ChatFormatting.RESET))
+                                    .append(Text.literal(")").formatted(Formatting.RESET))
                     );
                     i.incrementAndGet();
                 });
-                source.sendSuccess(response, false);
+                source.sendFeedback(response, false);
             } else {
-                source.sendFailure(errorText("taterzens.profession.lacking", ScarpetProfession.ID.toString()));
+                source.sendError(errorText("taterzens.profession.lacking", ScarpetProfession.ID.toString()));
             }
         });
     }
 
-    private static int removeTrait(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
+    private static int removeTrait(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
         String id = StringArgumentType.getString(context, "id");
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
             TaterzenProfession profession = taterzen.getProfession(ScarpetProfession.ID);
             if (profession instanceof ScarpetProfession scarpetProfession) {
                 if (scarpetProfession.removeTrait(id))
-                    source.sendSuccess(successText("taterzens.command.trait.remove", id), false);
+                    source.sendFeedback(successText("taterzens.command.trait.remove", id), false);
                 else
-                    context.getSource().sendFailure(errorText("taterzens.command.trait.error.404", id));
+                    context.getSource().sendError(errorText("taterzens.command.trait.error.404", id));
             } else {
-                source.sendFailure(errorText("taterzens.profession.lacking", ScarpetProfession.ID.toString()));
+                source.sendError(errorText("taterzens.profession.lacking", ScarpetProfession.ID.toString()));
             }
         });
     }
 
-    private static int addTrait(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
+    private static int addTrait(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
         String id = StringArgumentType.getString(context, "id");
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
             TaterzenProfession profession = taterzen.getProfession(ScarpetProfession.ID);
             if (profession instanceof ScarpetProfession scarpetProfession) {
                 scarpetProfession.addTrait(id);
-                source.sendSuccess(successText("taterzens.command.trait.add", id), false);
+                source.sendFeedback(successText("taterzens.command.trait.add", id), false);
             } else {
-                source.sendFailure(errorText("taterzens.profession.lacking", ScarpetProfession.ID.toString()));
+                source.sendError(errorText("taterzens.profession.lacking", ScarpetProfession.ID.toString()));
             }
         });
     }
 
-    private static CompletableFuture<Suggestions> suggestRemovableTraits(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+    private static CompletableFuture<Suggestions> suggestRemovableTraits(CommandContext<ServerCommandSource> ctx, SuggestionsBuilder builder) {
         HashSet<Value> traits = new HashSet<>();
         try {
-            TaterzenNPC taterzen = ((ITaterzenEditor) ctx.getSource().getPlayerOrException()).getNpc();
+            TaterzenNPC taterzen = ((ITaterzenEditor) ctx.getSource().getPlayerOrThrow()).getNpc();
             if(taterzen != null && taterzen.getProfession(ScarpetProfession.ID) instanceof ScarpetProfession scarpetProfession) {
                 traits = scarpetProfession.getTraits();
             }
         } catch(CommandSyntaxException ignored) { }
-        return SharedSuggestionProvider.suggest(traits.stream().map(Value::getPrettyString), builder);
+        return CommandSource.suggestMatching(traits.stream().map(Value::getPrettyString), builder);
     }
 }

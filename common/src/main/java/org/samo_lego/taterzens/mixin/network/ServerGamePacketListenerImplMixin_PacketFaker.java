@@ -1,18 +1,5 @@
 package org.samo_lego.taterzens.mixin.network;
 
-import net.minecraft.network.Connection;
-import net.minecraft.network.PacketSendListener;
-import net.minecraft.network.protocol.BundlePacket;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundAddPlayerPacket;
-import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 import org.samo_lego.taterzens.interfaces.ITaterzenEditor;
 import org.samo_lego.taterzens.mixin.accessors.AClientboundSetEntityDataPacket;
@@ -28,27 +15,40 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.*;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.data.DataTracker;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.ClientConnection;
+import net.minecraft.network.PacketCallbacks;
+import net.minecraft.network.packet.BundlePacket;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerRemoveS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerSpawnS2CPacket;
+import net.minecraft.server.network.ServerPlayNetworkHandler;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.World;
 
 import static org.samo_lego.taterzens.Taterzens.config;
 
 /**
  * Used to "fake" the TaterzenNPC entity type.
  */
-@Mixin(value = ServerGamePacketListenerImpl.class, priority = 900)
+@Mixin(value = ServerPlayNetworkHandler.class, priority = 900)
 public abstract class ServerGamePacketListenerImplMixin_PacketFaker {
 
     @Shadow
-    public ServerPlayer player;
+    public ServerPlayerEntity player;
 
     @Final
     @Shadow
-    private Connection connection;
+    private ClientConnection connection;
 
     @Shadow
-    public abstract void send(Packet<?> packet, @Nullable PacketSendListener packetSendListener);
+    public abstract void sendPacket(Packet<?> packet, @Nullable PacketCallbacks packetSendListener);
 
     @Shadow
-    public abstract void send(Packet<?> packet);
+    public abstract void sendPacket(Packet<?> packet);
 
     @Unique
     private boolean taterzens$skipCheck;
@@ -60,15 +60,15 @@ public abstract class ServerGamePacketListenerImplMixin_PacketFaker {
     /**
      * Changes entity type if entity is an instance of {@link TaterzenNPC}.
      */
-    @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;)V",
+    @Inject(method = "Lnet/minecraft/server/network/ServerPlayNetworkHandler;sendPacket(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/PacketCallbacks;)V",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/network/Connection;send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;)V"))
-    private void changeEntityType(Packet<?> packet, PacketSendListener listener, CallbackInfo ci) {
-        Level world = player.getLevel();
+                    target = "Lnet/minecraft/network/ClientConnection;send(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/PacketCallbacks;)V"))
+    private void changeEntityType(Packet<?> packet, PacketCallbacks listener, CallbackInfo ci) {
+        World world = player.getWorld();
         if (packet instanceof BundlePacket<?> bPacket && !this.taterzens$skipCheck) {
-            for (Packet<?> subPacket : bPacket.subPackets()) {
-                if (subPacket instanceof ClientboundAddPlayerPacket playerAddPacket) {
-                    Entity entity = player.getLevel().getEntity(playerAddPacket.getEntityId());
+            for (Packet<?> subPacket : bPacket.getPackets()) {
+                if (subPacket instanceof PlayerSpawnS2CPacket playerAddPacket) {
+                    Entity entity = player.getWorld().getEntityById(playerAddPacket.getId());
 
                     if (entity instanceof TaterzenNPC npc) {
                         var uuid = npc.getGameProfile().getId();
@@ -77,21 +77,21 @@ public abstract class ServerGamePacketListenerImplMixin_PacketFaker {
                     }
                 }
             }
-        } else if (packet instanceof ClientboundSetEntityDataPacket) {
-            Entity entity = world.getEntity(((AClientboundSetEntityDataPacket) packet).getEntityId());
+        } else if (packet instanceof EntityTrackerUpdateS2CPacket) {
+            Entity entity = world.getEntityById(((AClientboundSetEntityDataPacket) packet).getEntityId());
 
             if (!(entity instanceof TaterzenNPC taterzen))
                 return;
-            Player fakePlayer = taterzen.getFakePlayer();
-            List<SynchedEntityData.DataValue<?>> trackedValues = fakePlayer.getEntityData().getNonDefaultValues();
+            PlayerEntity fakePlayer = taterzen.getFakePlayer();
+            List<DataTracker.SerializedEntry<?>> trackedValues = fakePlayer.getDataTracker().getChangedEntries();
 
             if (taterzen.equals(((ITaterzenEditor) this.player).getNpc()) && trackedValues != null && config.glowSelectedNpc) {
                 trackedValues.removeIf(value -> value.id() == 0);
-                Byte flags = fakePlayer.getEntityData().get(AEntity.getFLAGS());
+                Byte flags = fakePlayer.getDataTracker().get(AEntity.getFLAGS());
                 // Modify Taterzen to have fake glowing effect for the player
                 flags = (byte) (flags | 1 << AEntity.getFLAG_GLOWING());
 
-                SynchedEntityData.DataValue<Byte> glowingTag = SynchedEntityData.DataValue.create(AEntity.getFLAGS(), flags);
+                DataTracker.SerializedEntry<Byte> glowingTag = DataTracker.SerializedEntry.of(AEntity.getFLAGS(), flags);
                 trackedValues.add(glowingTag);
             }
 
@@ -99,7 +99,7 @@ public abstract class ServerGamePacketListenerImplMixin_PacketFaker {
         }
     }
 
-    @Inject(method = "handleMovePlayer", at = @At("RETURN"))
+    @Inject(method = "onPlayerMove", at = @At("RETURN"))
     private void removeTaterzenFromTablist(CallbackInfo ci) {
         if (taterzens$tablistQueue.isEmpty()) return;
 
@@ -115,10 +115,10 @@ public abstract class ServerGamePacketListenerImplMixin_PacketFaker {
         }
         if (toRemove.isEmpty()) return;
 
-        ClientboundPlayerInfoRemovePacket taterzensRemovePacket = new ClientboundPlayerInfoRemovePacket(toRemove);
+        PlayerRemoveS2CPacket taterzensRemovePacket = new PlayerRemoveS2CPacket(toRemove);
 
         this.taterzens$skipCheck = true;
-        this.send(taterzensRemovePacket);
+        this.sendPacket(taterzensRemovePacket);
         this.taterzens$skipCheck = false;
     }
 }

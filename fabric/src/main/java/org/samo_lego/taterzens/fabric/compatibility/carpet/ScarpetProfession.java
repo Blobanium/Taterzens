@@ -3,24 +3,24 @@ package org.samo_lego.taterzens.fabric.compatibility.carpet;
 import carpet.script.value.StringValue;
 import carpet.script.value.Value;
 import carpet.script.value.ValueConversions;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 import org.samo_lego.taterzens.api.professions.AbstractProfession;
 import org.samo_lego.taterzens.npc.NPCData;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 import java.util.HashSet;
 import java.util.List;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 
 import static org.samo_lego.taterzens.Taterzens.MOD_ID;
 
@@ -39,7 +39,7 @@ public class ScarpetProfession extends AbstractProfession {
     private static final TaterzenScarpetEvent PLAYERS_NEARBY_EVENT = new TaterzenScarpetEvent("taterzen_approached_by", 3);
 
     private final HashSet<Value> SCARPET_TRAITS = new HashSet<>();
-    public static final ResourceLocation ID = new ResourceLocation(MOD_ID, "scarpet_profession");
+    public static final Identifier ID = new Identifier(MOD_ID, "scarpet_profession");
 
     public ScarpetProfession(TaterzenNPC npc) {
         super(npc);
@@ -72,11 +72,11 @@ public class ScarpetProfession extends AbstractProfession {
     @Override
     public boolean tryPickupItem(ItemEntity itemEntity) {
         PICKUP_EVENT.triggerCustomEvent(this.npc, this.getTraits(), itemEntity);
-        return itemEntity.getItem().isEmpty() || itemEntity.isRemoved();
+        return itemEntity.getStack().isEmpty() || itemEntity.isRemoved();
     }
 
     @Override
-    public InteractionResult interactAt(Player player, Vec3 pos, InteractionHand hand) {
+    public ActionResult interactAt(PlayerEntity player, Vec3d pos, Hand hand) {
         INTERACTION_EVENT.triggerCustomEvent(this.npc, this.getTraits(), player, ValueConversions.of(pos), hand);
 
         return super.interactAt(player, pos, hand);
@@ -89,12 +89,12 @@ public class ScarpetProfession extends AbstractProfession {
     }
 
     @Override
-    public void onPlayersNearby(List<ServerPlayer> players) {
+    public void onPlayersNearby(List<ServerPlayerEntity> players) {
         PLAYERS_NEARBY_EVENT.triggerCustomEvent(this.npc, this.getTraits(), players);
     }
 
     @Override
-    public InteractionResult tickMovement() {
+    public ActionResult tickMovement() {
         TICK_MOVEMENT_EVENT.triggerCustomEvent(this.npc, this.getTraits());
         return super.tickMovement();
     }
@@ -105,22 +105,22 @@ public class ScarpetProfession extends AbstractProfession {
     }
 
     @Override
-    public void readNbt(CompoundTag tag) {
+    public void readNbt(NbtCompound tag) {
         READ_NBT_EVENT.triggerCustomEvent(this.npc, this.getTraits(), tag);
 
-        ListTag scarpetTraits = (ListTag) tag.get("ScarpetTraits");
+        NbtList scarpetTraits = (NbtList) tag.get("ScarpetTraits");
         if (scarpetTraits != null) {
-            scarpetTraits.forEach(profession -> this.addTrait(profession.getAsString()));
+            scarpetTraits.forEach(profession -> this.addTrait(profession.asString()));
         }
     }
 
     @Override
-    public void saveNbt(CompoundTag tag) {
+    public void saveNbt(NbtCompound tag) {
         SAVE_NBT_EVENT.triggerCustomEvent(this.npc, this.getTraits(), tag);
 
         if (!this.SCARPET_TRAITS.isEmpty()) {
-            ListTag scarpetTraits = new ListTag();
-            this.SCARPET_TRAITS.forEach(prof -> scarpetTraits.add(StringTag.valueOf(prof.getPrettyString())));
+            NbtList scarpetTraits = new NbtList();
+            this.SCARPET_TRAITS.forEach(prof -> scarpetTraits.add(NbtString.of(prof.getPrettyString())));
             tag.put("ScarpetTraits", scarpetTraits);
         }
     }

@@ -1,12 +1,5 @@
 package org.samo_lego.taterzens.mixin.player;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
-import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.samo_lego.taterzens.Taterzens;
@@ -19,6 +12,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
+import net.minecraft.block.Blocks;
+import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.ParticleS2CPacket;
+import net.minecraft.particle.DustParticleEffect;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 import static org.samo_lego.taterzens.Taterzens.config;
 import static org.samo_lego.taterzens.util.TextUtil.successText;
@@ -26,11 +26,11 @@ import static org.samo_lego.taterzens.util.TextUtil.successText;
 /**
  * Additional methods for players to track {@link TaterzenNPC}
  */
-@Mixin(ServerPlayer.class)
+@Mixin(ServerPlayerEntity.class)
 public abstract class ServerPlayerMixinCast_ITaterzenEditor implements ITaterzenEditor {
 
     @Unique
-    private final ServerPlayer self = (ServerPlayer) (Object) this;
+    private final ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 
     @Unique
     private TaterzenNPC selectedNpc;
@@ -51,7 +51,7 @@ public abstract class ServerPlayerMixinCast_ITaterzenEditor implements ITaterzen
         if (editor.getNpc() != null && lastRenderTick++ > 4) {
             if (this.editorMode == EditorMode.PATH) {
                 ArrayList<BlockPos> pathTargets = editor.getNpc().getPathTargets();
-                DustParticleOptions effect = new DustParticleOptions(
+                DustParticleEffect effect = new DustParticleEffect(
                         new Vector3f(
                                 config.path.color.red / 255.0F,
                                 config.path.color.green / 255.0F,
@@ -67,18 +67,18 @@ public abstract class ServerPlayerMixinCast_ITaterzenEditor implements ITaterzen
                     int deltaY = pos.getY() - nextPos.getY();
                     int deltaZ = pos.getZ() - nextPos.getZ();
 
-                    double distance = Math.sqrt(pos.distSqr(nextPos));
+                    double distance = Math.sqrt(pos.getSquaredDistance(nextPos));
                     for (double j = 0; j < distance; j += 0.5D) {
                         double x = pos.getX() - j / distance * deltaX;
                         double y = pos.getY() - j / distance * deltaY;
                         double z = pos.getZ() - j / distance * deltaZ;
-                        ClientboundLevelParticlesPacket packet = new ClientboundLevelParticlesPacket(effect, true, x + 0.5D, y + 1.5D, z + 0.5D, 0.1F, 0.1F, 0.1F, 1.0F, 1);
-                        this.self.connection.send(packet);
+                        ParticleS2CPacket packet = new ParticleS2CPacket(effect, true, x + 0.5D, y + 1.5D, z + 0.5D, 0.1F, 0.1F, 0.1F, 1.0F, 1);
+                        this.self.networkHandler.sendPacket(packet);
                     }
                 }
             }
             if (this.editorMode != EditorMode.NONE) {
-                self.displayClientMessage(successText("taterzens.tooltip.current_editor", String.valueOf(this.editorMode)), true);
+                self.sendMessage(successText("taterzens.tooltip.current_editor", String.valueOf(this.editorMode)), true);
             }
 
             this.lastRenderTick = 0;
@@ -90,14 +90,14 @@ public abstract class ServerPlayerMixinCast_ITaterzenEditor implements ITaterzen
         ITaterzenEditor editor = (ITaterzenEditor) this.self;
 
         if (editor.getNpc() != null) {
-            Level world = self.getLevel();
+            World world = self.getWorld();
             if (this.editorMode == EditorMode.PATH && mode != EditorMode.PATH) {
-                editor.getNpc().getPathTargets().forEach(blockPos -> self.connection.send(
-                        new ClientboundBlockUpdatePacket(blockPos, world.getBlockState(blockPos))
+                editor.getNpc().getPathTargets().forEach(blockPos -> self.networkHandler.sendPacket(
+                        new BlockUpdateS2CPacket(blockPos, world.getBlockState(blockPos))
                 ));
             } else if (this.editorMode != EditorMode.PATH && mode == EditorMode.PATH) {
-                editor.getNpc().getPathTargets().forEach(blockPos -> self.connection.send(
-                        new ClientboundBlockUpdatePacket(blockPos, Blocks.REDSTONE_BLOCK.defaultBlockState())
+                editor.getNpc().getPathTargets().forEach(blockPos -> self.networkHandler.sendPacket(
+                        new BlockUpdateS2CPacket(blockPos, Blocks.REDSTONE_BLOCK.getDefaultState())
                 ));
             }
 
@@ -128,7 +128,7 @@ public abstract class ServerPlayerMixinCast_ITaterzenEditor implements ITaterzen
     public boolean selectNpc(@Nullable TaterzenNPC npc) {
         if (npc != null && !npc.allowEditBy(this.self) &&
                 !Taterzens.getInstance().getPlatform().checkPermission(
-                        this.self.createCommandSourceStack(), "taterzens.npc.select.bypass", config.perms.selectBypassLevel)) {
+                        this.self.getCommandSource(), "taterzens.npc.select.bypass", config.perms.selectBypassLevel)) {
             return false;
         }
 

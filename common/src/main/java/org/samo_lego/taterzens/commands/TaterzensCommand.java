@@ -5,20 +5,20 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.commands.synchronization.SuggestionProviders;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.suggestion.SuggestionProviders;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import org.samo_lego.config2brigadier.util.TranslatedText;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.util.LanguageUtil;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.word;
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandManager.literal;
 import static org.samo_lego.taterzens.Taterzens.MOD_ID;
 import static org.samo_lego.taterzens.Taterzens.config;
 import static org.samo_lego.taterzens.compatibility.ModDiscovery.SERVER_TRANSLATIONS_LOADED;
@@ -28,13 +28,13 @@ import static org.samo_lego.taterzens.util.TextUtil.successText;
 import static org.samo_lego.taterzens.util.TextUtil.translate;
 
 public class TaterzensCommand {
-    private static final SuggestionProvider<CommandSourceStack> AVAILABLE_LANGUAGES;
+    private static final SuggestionProvider<ServerCommandSource> AVAILABLE_LANGUAGES;
 
     private static final String DOCS_URL = "https://samolego.github.io/Taterzens/";
 
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         // root node
-        LiteralCommandNode<CommandSourceStack> taterzensNode = dispatcher.register(literal("taterzens")
+        LiteralCommandNode<ServerCommandSource> taterzensNode = dispatcher.register(literal("taterzens")
                 .then(literal("wiki")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.wiki_info", config.perms.taterzensCommandPermissionLevel))
                         .executes(TaterzensCommand::wikiInfo)
@@ -42,7 +42,7 @@ public class TaterzensCommand {
         );
 
         // config node
-        LiteralCommandNode<CommandSourceStack> configNode = literal("config")
+        LiteralCommandNode<ServerCommandSource> configNode = literal("config")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.config", config.perms.taterzensCommandPermissionLevel))
                 .then(literal("reload")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.config.reload", config.perms.taterzensCommandPermissionLevel))
@@ -50,7 +50,7 @@ public class TaterzensCommand {
                 )
                 .build();
 
-        LiteralCommandNode<CommandSourceStack> editNode = literal("edit")
+        LiteralCommandNode<ServerCommandSource> editNode = literal("edit")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.config.edit", config.perms.taterzensCommandPermissionLevel))
                 .then(literal("language")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.config.edit.lang", config.perms.taterzensCommandPermissionLevel))
@@ -70,8 +70,8 @@ public class TaterzensCommand {
         taterzensNode.addChild(configNode);
     }
 
-    private static int setLang(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
+    private static int setLang(CommandContext<ServerCommandSource> context) {
+        ServerCommandSource source = context.getSource();
         String language = StringArgumentType.getString(context, "language");
 
         // Set language for config editing system
@@ -82,17 +82,17 @@ public class TaterzensCommand {
             config.save();
 
             LanguageUtil.setupLanguage();
-            source.sendSuccess(successText("taterzens.command.language.success", language), false);
+            source.sendFeedback(successText("taterzens.command.language.success", language), false);
             if(SERVER_TRANSLATIONS_LOADED) {
-                source.sendSuccess(successText("taterzens.command.language.server_translations_hint.1"), false);
-                source.sendSuccess(successText("taterzens.command.language.server_translations_hint.2"), false);
+                source.sendFeedback(successText("taterzens.command.language.server_translations_hint.1"), false);
+                source.sendFeedback(successText("taterzens.command.language.server_translations_hint.2"), false);
             }
 
         } else {
             String url = "https://github.com/samolego/Taterzens#translation-contributions";
-            source.sendFailure(
+            source.sendError(
                     errorText("taterzens.command.language.404", language, url)
-                    .withStyle(style -> style
+                    .styled(style -> style
                         .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url))
                     )
             );
@@ -101,11 +101,11 @@ public class TaterzensCommand {
         return 1;
     }
 
-    private static int wikiInfo(CommandContext<CommandSourceStack> context) {
-        context.getSource().sendSuccess(
+    private static int wikiInfo(CommandContext<ServerCommandSource> context) {
+        context.getSource().sendFeedback(
                 successText("taterzens.command.wiki", DOCS_URL)
-                        .withStyle(ChatFormatting.GREEN)
-                        .withStyle(style -> style
+                        .formatted(Formatting.GREEN)
+                        .styled(style -> style
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, DOCS_URL))
                                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, translate("taterzens.tooltip.see_docs")))
                         ),
@@ -114,11 +114,11 @@ public class TaterzensCommand {
         return 1;
     }
 
-    private static int reloadConfig(CommandContext<CommandSourceStack> context) {
+    private static int reloadConfig(CommandContext<ServerCommandSource> context) {
         reloadConfig();
 
-        context.getSource().sendSuccess(
-                translate("taterzens.command.config.success").withStyle(ChatFormatting.GREEN),
+        context.getSource().sendFeedback(
+                translate("taterzens.command.config.success").formatted(Formatting.GREEN),
                 false
         );
         return 1;
@@ -135,9 +135,9 @@ public class TaterzensCommand {
 
     static {
         AVAILABLE_LANGUAGES = SuggestionProviders.register(
-                new ResourceLocation(MOD_ID, "languages"),
+                new Identifier(MOD_ID, "languages"),
                 (context, builder) ->
-                        SharedSuggestionProvider.suggest(LANG_LIST, builder)
+                        CommandSource.suggestMatching(LANG_LIST, builder)
         );
     }
 }

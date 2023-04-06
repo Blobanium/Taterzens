@@ -1,9 +1,8 @@
 package org.samo_lego.taterzens.platform;
 
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.level.ServerPlayer;
-
 import java.nio.file.Path;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
  * Base class for platform implementations.
@@ -36,13 +35,13 @@ public abstract class Platform {
      * @param fallbackLevel the fallback level to use if the permission node is not set.
      * @return true if the command source has the permission node, false otherwise.
      */
-    public abstract boolean checkPermission(CommandSourceStack source, String permissionNode, int fallbackLevel);
+    public abstract boolean checkPermission(ServerCommandSource source, String permissionNode, int fallbackLevel);
 
     /**
      * Registers the taterzen entity type.
      */
     public abstract void registerTaterzenType();
 
-    public void openEditorGui(ServerPlayer player) {
+    public void openEditorGui(ServerPlayerEntity player) {
     }
 }

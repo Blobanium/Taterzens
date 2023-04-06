@@ -6,15 +6,6 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.commands.arguments.MessageArgument;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.commands.NpcCommand;
 import org.samo_lego.taterzens.interfaces.ITaterzenEditor;
@@ -26,10 +17,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.argument.MessageArgumentType;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
-import static net.minecraft.commands.arguments.MessageArgument.message;
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.command.argument.MessageArgumentType.message;
 import static org.samo_lego.taterzens.Taterzens.PROFESSION_TYPES;
 import static org.samo_lego.taterzens.Taterzens.config;
 import static org.samo_lego.taterzens.util.TextUtil.errorText;
@@ -39,23 +39,23 @@ import static org.samo_lego.taterzens.util.TextUtil.translate;
 
 public class ProfessionsCommand {
 
-    private static final SuggestionProvider<CommandSourceStack> PROFESSION_SUGESTIONS;
+    private static final SuggestionProvider<ServerCommandSource> PROFESSION_SUGESTIONS;
 
-    public static void registerNode(LiteralCommandNode<CommandSourceStack> editNode) {
-        LiteralCommandNode<CommandSourceStack> professionsNode = literal("professions")
+    public static void registerNode(LiteralCommandNode<ServerCommandSource> editNode) {
+        LiteralCommandNode<ServerCommandSource> professionsNode = literal("professions")
                 .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.npc.edit.professions", config.perms.npcCommandPermissionLevel))
                 .then(literal("remove")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.npc.edit.professions.remove", config.perms.npcCommandPermissionLevel))
                         .then(argument("profession type", message())
                                 .suggests(ProfessionsCommand::suggestRemovableProfessions)
-                                .executes(ctx -> removeProfession(ctx, new ResourceLocation(MessageArgument.getMessage(ctx, "profession type").getString())))
+                                .executes(ctx -> removeProfession(ctx, new Identifier(MessageArgumentType.getMessage(ctx, "profession type").getString())))
                         )
                 )
                 .then(literal("add")
                         .requires(src -> Taterzens.getInstance().getPlatform().checkPermission(src, "taterzens.npc.edit.professions.add", config.perms.npcCommandPermissionLevel))
                         .then(argument("profession type", message())
                                 .suggests(PROFESSION_SUGESTIONS)
-                                .executes(ctx -> setProfession(ctx, new ResourceLocation(MessageArgument.getMessage(ctx, "profession type").getString())))
+                                .executes(ctx -> setProfession(ctx, new Identifier(MessageArgumentType.getMessage(ctx, "profession type").getString())))
                         )
                 )
                 .then(literal("list")
@@ -68,76 +68,76 @@ public class ProfessionsCommand {
     }
 
 
-    private static int listTaterzenProfessions(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
-            Collection<ResourceLocation> professionIds = taterzen.getProfessionIds();
+    private static int listTaterzenProfessions(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
+            Collection<Identifier> professionIds = taterzen.getProfessionIds();
 
-            MutableComponent response = joinText("taterzens.command.profession.list", ChatFormatting.AQUA, ChatFormatting.YELLOW, taterzen.getName().getString());
+            MutableText response = joinText("taterzens.command.profession.list", Formatting.AQUA, Formatting.YELLOW, taterzen.getName().getString());
             AtomicInteger i = new AtomicInteger();
 
             professionIds.forEach(ResourceLocation -> {
                 int index = i.get() + 1;
                 response.append(
-                        Component.literal("\n" + index + "-> " + ResourceLocation.toString() + " (")
-                                .withStyle(index % 2 == 0 ? ChatFormatting.YELLOW : ChatFormatting.GOLD)
+                        Text.literal("\n" + index + "-> " + ResourceLocation.toString() + " (")
+                                .formatted(index % 2 == 0 ? Formatting.YELLOW : Formatting.GOLD)
                                 .append(
-                                        Component.literal("X")
-                                                .withStyle(ChatFormatting.RED)
-                                                .withStyle(ChatFormatting.BOLD)
-                                                .withStyle(style -> style
+                                        Text.literal("X")
+                                                .formatted(Formatting.RED)
+                                                .formatted(Formatting.BOLD)
+                                                .styled(style -> style
                                                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, translate("taterzens.tooltip.delete", ResourceLocation.getPath())))
                                                         .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/npc edit professions remove " + ResourceLocation))
                                                 )
                                 )
-                                .append(Component.literal(")").withStyle(ChatFormatting.RESET))
+                                .append(Text.literal(")").formatted(Formatting.RESET))
                 );
                 i.incrementAndGet();
             });
-            source.sendSuccess(response, false);
+            source.sendFeedback(response, false);
         });
     }
 
-    private static int removeProfession(CommandContext<CommandSourceStack> context, ResourceLocation id) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
+    private static int removeProfession(CommandContext<ServerCommandSource> context, Identifier id) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
             if(taterzen.getProfessionIds().contains(id)) {
                 taterzen.removeProfession(id);
-                source.sendSuccess(successText("taterzens.command.profession.remove", id.toString()), false);
+                source.sendFeedback(successText("taterzens.command.profession.remove", id.toString()), false);
             } else
-                context.getSource().sendFailure(errorText("taterzens.command.profession.error.404", id.toString()));
+                context.getSource().sendError(errorText("taterzens.command.profession.error.404", id.toString()));
         });
     }
 
-    private static int setProfession(CommandContext<CommandSourceStack> context, ResourceLocation id) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrException(), taterzen -> {
+    private static int setProfession(CommandContext<ServerCommandSource> context, Identifier id) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        return NpcCommand.selectedTaterzenExecutor(source.getEntityOrThrow(), taterzen -> {
             if (PROFESSION_TYPES.containsKey(id)) {
                 taterzen.addProfession(id);
-                source.sendSuccess(successText("taterzens.command.profession.add", id.toString()), false);
+                source.sendFeedback(successText("taterzens.command.profession.add", id.toString()), false);
             } else {
-                context.getSource().sendFailure(errorText("taterzens.command.profession.error.404", id.toString()));
+                context.getSource().sendError(errorText("taterzens.command.profession.error.404", id.toString()));
             }
         });
     }
 
-    private static CompletableFuture<Suggestions> suggestRemovableProfessions(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        Collection<ResourceLocation> professions = new HashSet<>();
+    private static CompletableFuture<Suggestions> suggestRemovableProfessions(CommandContext<ServerCommandSource> ctx, SuggestionsBuilder builder) {
+        Collection<Identifier> professions = new HashSet<>();
         try {
-            TaterzenNPC taterzen = ((ITaterzenEditor) ctx.getSource().getPlayerOrException()).getNpc();
+            TaterzenNPC taterzen = ((ITaterzenEditor) ctx.getSource().getPlayerOrThrow()).getNpc();
             if(taterzen != null) {
                 professions = taterzen.getProfessionIds();
             }
         } catch(CommandSyntaxException ignored) {
         }
-        return SharedSuggestionProvider.suggest(professions.stream().map(ResourceLocation::toString), builder);
+        return CommandSource.suggestMatching(professions.stream().map(Identifier::toString), builder);
     }
 
     static {
-        Set<ResourceLocation> availableProfessions = new HashSet<>(PROFESSION_TYPES.keySet());
+        Set<Identifier> availableProfessions = new HashSet<>(PROFESSION_TYPES.keySet());
 
-        List<String> professions = availableProfessions.stream().map(ResourceLocation::toString).toList();
+        List<String> professions = availableProfessions.stream().map(Identifier::toString).toList();
         PROFESSION_SUGESTIONS = (context, builder) ->
-                SharedSuggestionProvider.suggest(professions, builder);
+                CommandSource.suggestMatching(professions, builder);
     }
 }

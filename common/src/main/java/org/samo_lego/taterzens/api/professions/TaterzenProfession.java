@@ -1,18 +1,18 @@
 package org.samo_lego.taterzens.api.professions;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 import org.samo_lego.taterzens.npc.NPCData;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 import java.util.List;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
+import net.minecraft.util.math.Vec3d;
 
 /**
  * Profession interface, providing hooks
@@ -28,10 +28,10 @@ public interface TaterzenProfession {
      * Called on Taterzen entity tick.
      * Returning different action results has different meanings:
      * <ul>
-     *     <li>{@link InteractionResult#PASS} - Default; continues ticking other professions.</li>
-     *     <li>{@link InteractionResult#CONSUME} - Stops processing others, but continues with base Taterzen tick.</li>
-     *     <li>{@link InteractionResult#FAIL} - Stops whole movement tick.</li>
-     *     <li>{@link InteractionResult#SUCCESS} - Continues with super.tickMovement(), but skips Taterzen's tick.</li>
+     *     <li>{@link ActionResult#PASS} - Default; continues ticking other professions.</li>
+     *     <li>{@link ActionResult#CONSUME} - Stops processing others, but continues with base Taterzen tick.</li>
+     *     <li>{@link ActionResult#FAIL} - Stops whole movement tick.</li>
+     *     <li>{@link ActionResult#SUCCESS} - Continues with super.tickMovement(), but skips Taterzen's tick.</li>
      * </ul>
      *
      * @return true if you want to cancel the default Taterzen ticking.
@@ -40,25 +40,25 @@ public interface TaterzenProfession {
      * for interactions with players.
      */
     @Deprecated
-    default InteractionResult tick() {
-        return InteractionResult.PASS;
+    default ActionResult tick() {
+        return ActionResult.PASS;
     }
 
     /**
      * Called on movement tick.
      * Returning different action results has different meanings:
      * <ul>
-     *     <li>{@link InteractionResult#PASS} - Default; continues ticking other professions.</li>
-     *     <li>{@link InteractionResult#CONSUME} - Stops processing others, but continues with base Taterzen movement tick.</li>
-     *     <li>{@link InteractionResult#FAIL} - Stops whole movement tick.</li>
-     *     <li>{@link InteractionResult#SUCCESS} - Continues with super.tickMovement(), but skips Taterzen's movement tick.</li>
+     *     <li>{@link ActionResult#PASS} - Default; continues ticking other professions.</li>
+     *     <li>{@link ActionResult#CONSUME} - Stops processing others, but continues with base Taterzen movement tick.</li>
+     *     <li>{@link ActionResult#FAIL} - Stops whole movement tick.</li>
+     *     <li>{@link ActionResult#SUCCESS} - Continues with super.tickMovement(), but skips Taterzen's movement tick.</li>
      * </ul>
      *
      * @return action result which determines further execution
      */
-    default InteractionResult tickMovement() {
+    default ActionResult tickMovement() {
         this.tick();
-        return InteractionResult.PASS;
+        return ActionResult.PASS;
     }
 
     /**
@@ -68,8 +68,8 @@ public interface TaterzenProfession {
      * @param hand player's hand
      * @return PASS to continue with default interaction, SUCCESS or FAIL to stop.
      */
-    default InteractionResult interactAt(Player player, Vec3 pos, InteractionHand hand) {
-        return InteractionResult.PASS;
+    default ActionResult interactAt(PlayerEntity player, Vec3d pos, Hand hand) {
+        return ActionResult.PASS;
     }
 
     /**
@@ -102,17 +102,17 @@ public interface TaterzenProfession {
     }
 
     /**
-     * Called on parsing Taterzen data from {@link CompoundTag}.
+     * Called on parsing Taterzen data from {@link NbtCompound}.
      * @param tag tag to load profession data from.
      */
-    default void readNbt(CompoundTag tag) {
+    default void readNbt(NbtCompound tag) {
     }
 
     /**
-     * Called on saving Taterzen data to {@link CompoundTag}.
+     * Called on saving Taterzen data to {@link NbtCompound}.
      * @param tag tag to save profession data to.
      */
-    default void saveNbt(CompoundTag tag) {
+    default void saveNbt(NbtCompound tag) {
     }
 
     /**
@@ -176,7 +176,7 @@ public interface TaterzenProfession {
      * Called every tick if players are nearby.
      * @param players players that are in talking range of taterzen.
      */
-    default void onPlayersNearby(List<ServerPlayer> players) {
+    default void onPlayersNearby(List<ServerPlayerEntity> players) {
     }
 
     /**

@@ -1,7 +1,7 @@
 package org.samo_lego.taterzens.npc.commands;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 public class MinecraftCommand extends AbstractTaterzenCommand {
@@ -18,9 +18,9 @@ public class MinecraftCommand extends AbstractTaterzenCommand {
     }
 
     @Override
-    public void execute(TaterzenNPC npc, Player player) {
-        npc.getServer().getCommands().performPrefixedCommand(
-                npc.createCommandSourceStack(), command.replaceAll(CLICKER_PLACEHOLDER, player.getGameProfile().getName()));
+    public void execute(TaterzenNPC npc, PlayerEntity player) {
+        npc.getServer().getCommandManager().executeWithPrefix(
+                npc.getCommandSource(), command.replaceAll(CLICKER_PLACEHOLDER, player.getGameProfile().getName()));
     }
 
     @Override
@@ -29,13 +29,13 @@ public class MinecraftCommand extends AbstractTaterzenCommand {
     }
 
     @Override
-    public CompoundTag toTag(CompoundTag tag) {
+    public NbtCompound toTag(NbtCompound tag) {
         super.toTag(tag).putString("Command", this.command);
         return tag;
     }
 
     @Override
-    public void fromTag(CompoundTag cmdTag) {
+    public void fromTag(NbtCompound cmdTag) {
         this.command = cmdTag.getString("Command");
     }
 }

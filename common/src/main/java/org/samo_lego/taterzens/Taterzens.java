@@ -4,10 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.commands.CommandBuildContext;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.EntityType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.samo_lego.taterzens.api.professions.TaterzenProfession;
@@ -25,6 +21,10 @@ import java.io.File;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.entity.EntityType;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.util.Identifier;
 
 public class Taterzens {
 
@@ -47,7 +47,7 @@ public class Taterzens {
      */
     public static final Map<UUID, TaterzenNPC> TATERZEN_NPCS = Collections.synchronizedMap(new LinkedHashMap<>());
 
-    public static final HashMap<ResourceLocation, Function<TaterzenNPC, TaterzenProfession>> PROFESSION_TYPES = new HashMap<>();
+    public static final HashMap<Identifier, Function<TaterzenNPC, TaterzenProfession>> PROFESSION_TYPES = new HashMap<>();
     public static final Gson GSON;
 
     /**
@@ -55,7 +55,7 @@ public class Taterzens {
      * when packets are sent.
      */
     public static Supplier<EntityType<TaterzenNPC>> TATERZEN_TYPE;
-    public static final ResourceLocation NPC_ID = new ResourceLocation(MOD_ID, "npc");
+    public static final Identifier NPC_ID = new Identifier(MOD_ID, "npc");
 
     private final File configFile;
 
@@ -125,7 +125,7 @@ public class Taterzens {
      * @param dispatcher dispatcher to register commands to.
      * @param context
      */
-    public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext context) {
+    public static void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess context) {
         NpcCommand.register(dispatcher, context);
         TaterzensCommand.register(dispatcher);
         NpcGUICommand.register(dispatcher);

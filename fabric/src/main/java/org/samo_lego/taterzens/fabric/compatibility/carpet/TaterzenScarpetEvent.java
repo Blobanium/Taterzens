@@ -7,13 +7,13 @@ import carpet.script.value.EntityValue;
 import carpet.script.value.ListValue;
 import carpet.script.value.Value;
 import carpet.script.value.ValueConversions;
-import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.NotNull;
 import org.samo_lego.taterzens.npc.TaterzenNPC;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import net.minecraft.server.world.ServerWorld;
 
 public class TaterzenScarpetEvent extends CarpetEventServer.Event {
     public TaterzenScarpetEvent(String name, int reqArgs) {
@@ -30,11 +30,11 @@ public class TaterzenScarpetEvent extends CarpetEventServer.Event {
                     valArgs.add(EntityValue.of(taterzen));
                     valArgs.add(ListValue.wrap(traits.stream()));
                     for (Object o: args) {
-                        valArgs.add(ValueConversions.guess((ServerLevel) taterzen.level, o));
+                        valArgs.add(ValueConversions.guess((ServerWorld) taterzen.world, o));
                     }
                     return valArgs;
                 },
-                () -> CarpetServer.minecraft_server.createCommandSourceStack().withLevel((ServerLevel) taterzen.level)
+                () -> CarpetServer.minecraft_server.getCommandSource().withWorld((ServerWorld) taterzen.world)
         );
     }
 }

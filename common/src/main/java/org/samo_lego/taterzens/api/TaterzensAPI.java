@@ -3,18 +3,18 @@ package org.samo_lego.taterzens.api;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.block.entity.SkullBlockEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.SkullBlockEntity;
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.scores.Team;
+import net.minecraft.scoreboard.AbstractTeam;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.samo_lego.taterzens.Taterzens;
 import org.samo_lego.taterzens.api.professions.TaterzenProfession;
@@ -54,7 +54,7 @@ public class TaterzensAPI {
      * @return TaterzenNPC
      */
     @Nullable
-    public static TaterzenNPC loadTaterzenFromPreset(File preset, Level world) {
+    public static TaterzenNPC loadTaterzenFromPreset(File preset, World world) {
         if (preset.exists()) {
             String name = preset.getName();
             TaterzenNPC taterzenNPC = new TaterzenNPC(world);
@@ -71,7 +71,7 @@ public class TaterzensAPI {
      * @param preset preset file of Taterzen.
      * @return CompoundTag containing Taterzen data.
      */
-    public static CompoundTag loadPresetTag(File preset) {
+    public static NbtCompound loadPresetTag(File preset) {
         JsonElement element = null;
         try(BufferedReader fileReader = new BufferedReader(
                 new InputStreamReader(new FileInputStream(preset), StandardCharsets.UTF_8)
@@ -83,15 +83,15 @@ public class TaterzensAPI {
         }
         if(element != null) {
             try {
-                Tag tag = JsonOps.INSTANCE.convertTo(NbtOps.INSTANCE, element);
-                if(tag instanceof CompoundTag saveTag) {
+                NbtElement tag = JsonOps.INSTANCE.convertTo(NbtOps.INSTANCE, element);
+                if(tag instanceof NbtCompound saveTag) {
                     return saveTag;
                 }
             } catch(Throwable e) {
                 e.printStackTrace();
             }
         }
-        return new CompoundTag();
+        return new NbtCompound();
     }
 
     /**
@@ -100,8 +100,8 @@ public class TaterzensAPI {
      * @param preset file to save taterzen to.
      */
     public static void saveTaterzenToPreset(TaterzenNPC taterzen, File preset) {
-        CompoundTag saveTag = new CompoundTag();
-        taterzen.saveWithoutId(saveTag);
+        NbtCompound saveTag = new NbtCompound();
+        taterzen.writeNbt(saveTag);
 
         // Weird as it is, those cannot be read back :(
         saveTag.remove("ArmorDropChances");
@@ -114,10 +114,10 @@ public class TaterzensAPI {
         saveTag.remove("Rotation");
 
         // Saving team
-        Team team = taterzen.getTeam();
+        AbstractTeam team = taterzen.getScoreboardTeam();
         if (team != null) {
             String teamName = team.getName();
-            CompoundTag npcTag = (CompoundTag) saveTag.get("TaterzenNPCTag");
+            NbtCompound npcTag = (NbtCompound) saveTag.get("TaterzenNPCTag");
             if (npcTag != null)
                 npcTag.putString("SavedTeam", teamName);
         }
@@ -133,7 +133,7 @@ public class TaterzensAPI {
 
     /**
      * Creates a Taterzen NPC with rotations and custom name.
-     * You'll still have to spawn it in (use {@link Level#addFreshEntity(Entity)}
+     * You'll still have to spawn it in (use {@link World#spawnEntity(Entity)}
      * to achieve that).
      * @param world Taterzen's world
      * @param displayName Taterzen's name.
@@ -141,27 +141,27 @@ public class TaterzensAPI {
      * @param rotations Taterzen's rotations (0 - head yaw, 1 - body yaw, 2 - pitch)
      * @return TaterzenNPC
      */
-    public static TaterzenNPC createTaterzen(ServerLevel world, String displayName, Vec3 pos, float[] rotations) {
+    public static TaterzenNPC createTaterzen(ServerWorld world, String displayName, Vec3d pos, float[] rotations) {
         TaterzenNPC taterzen = new TaterzenNPC(world);
 
-        taterzen.moveTo(pos.x(), pos.y(), pos.z(), rotations[1], rotations[2]);
-        taterzen.setYHeadRot(rotations[0]);
-        taterzen.setCustomName(Component.literal(displayName));
-        SkullBlockEntity.updateGameprofile(taterzen.getGameProfile(), taterzen::applySkin);
+        taterzen.refreshPositionAndAngles(pos.getX(), pos.getY(), pos.getZ(), rotations[1], rotations[2]);
+        taterzen.setHeadYaw(rotations[0]);
+        taterzen.setCustomName(Text.literal(displayName));
+        SkullBlockEntity.loadProperties(taterzen.getGameProfile(), taterzen::applySkin);
 
         return taterzen;
     }
 
     /**
      * Creates a Taterzen NPC from owner with provided display name.
-     * You'll still have to spawn it in (use {@link Level#addFreshEntity(Entity)}
+     * You'll still have to spawn it in (use {@link World#spawnEntity(Entity)}
      * to achieve that).
      * @param owner player whose rotations and world will be copied to Taterzen
      * @param displayName Taterzen's name.
      * @return TaterzenNPC
      */
-    public static TaterzenNPC createTaterzen(ServerPlayer owner, String displayName) {
-        return createTaterzen(owner.getLevel(), displayName, owner.position(), new float[]{owner.yHeadRot, owner.getYRot(), owner.getXRot()});
+    public static TaterzenNPC createTaterzen(ServerPlayerEntity owner, String displayName) {
+        return createTaterzen(owner.getWorld(), displayName, owner.getPos(), new float[]{owner.headYaw, owner.getYaw(), owner.getPitch()});
     }
 
     /**
@@ -169,7 +169,7 @@ public class TaterzensAPI {
      * @param professionId a unique id of profession.
      * @param professionInitilizer constructor of profession that accepts {@link TaterzenNPC}.
      */
-    public static void registerProfession(ResourceLocation professionId, Function<TaterzenNPC, TaterzenProfession> professionInitilizer) {
+    public static void registerProfession(Identifier professionId, Function<TaterzenNPC, TaterzenProfession> professionInitilizer) {
         if (!PROFESSION_TYPES.containsKey(professionId)) {
             PROFESSION_TYPES.put(professionId, professionInitilizer);
         } else {

@@ -2,23 +2,23 @@ package org.samo_lego.taterzens.fabric.gui;
 
 import eu.pb4.sgui.api.elements.GuiElement;
 import eu.pb4.sgui.api.gui.SimpleGui;
-import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Container;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import org.samo_lego.taterzens.Taterzens;
 
 import static org.samo_lego.taterzens.Taterzens.config;
 
-public abstract class ListItemsGUI extends SimpleGui implements Container {
-    protected static final CompoundTag customData = new CompoundTag();
+public abstract class ListItemsGUI extends SimpleGui implements Inventory {
+    protected static final NbtCompound customData = new NbtCompound();
     private static final int REGISTRY_ITEMS_SIZE = Taterzens.getInstance().getPlatform().getItemRegistrySize();
     private int currentPage = 0;
 
@@ -29,55 +29,55 @@ public abstract class ListItemsGUI extends SimpleGui implements Container {
      * @param npcName player's taterzen.
      * @param titleTranslationKey title translation key for gui.
      */
-    public ListItemsGUI(ServerPlayer player, Component npcName, String titleTranslationKey) {
-        super(MenuType.GENERIC_9x6, player, false);
+    public ListItemsGUI(ServerPlayerEntity player, Text npcName, String titleTranslationKey) {
+        super(ScreenHandlerType.GENERIC_9X6, player, false);
 
-        this.setTitle(Component.translatable(titleTranslationKey).append(": ").withStyle(ChatFormatting.YELLOW).append(npcName.copy()));
+        this.setTitle(Text.translatable(titleTranslationKey).append(": ").formatted(Formatting.YELLOW).append(npcName.copy()));
 
         // Info (which page)
         ItemStack info = new ItemStack(Items.PAPER);
-        info.setTag(customData.copy());
-        info.setHoverName(getCurrentPageMarker());
-        info.enchant(null, 0);
+        info.setNbt(customData.copy());
+        info.setCustomName(getCurrentPageMarker());
+        info.addEnchantment(null, 0);
 
         this.setSlot(3, info);
 
         // Previous page
         ItemStack back = new ItemStack(Items.MAGENTA_GLAZED_TERRACOTTA);
-        back.setTag(customData.copy());
-        back.setHoverName(Component.translatable("spectatorMenu.previous_page"));
-        back.enchant(null, 0);
+        back.setNbt(customData.copy());
+        back.setCustomName(Text.translatable("spectatorMenu.previous_page"));
+        back.addEnchantment(null, 0);
 
         GuiElement previousScreenButton = new GuiElement(back, (index, type1, action) -> {
             if (--this.currentPage < 0)
                 this.currentPage = 0;
-            info.setHoverName(getCurrentPageMarker());
+            info.setCustomName(getCurrentPageMarker());
         });
         this.setSlot(0, previousScreenButton);
 
         // Next page
         ItemStack next = new ItemStack(Items.LIGHT_BLUE_GLAZED_TERRACOTTA);
-        next.setTag(customData.copy());
-        next.setHoverName(Component.translatable("spectatorMenu.next_page"));
-        next.enchant(null, 0);
+        next.setNbt(customData.copy());
+        next.setCustomName(Text.translatable("spectatorMenu.next_page"));
+        next.addEnchantment(null, 0);
 
         GuiElement nextScreenButton = new GuiElement(next, (_i, _clickType, _slotActionType) -> {
             if (++this.currentPage > this.getMaxPages())
                 this.currentPage = this.getMaxPages();
-            info.setHoverName(getCurrentPageMarker());
+            info.setCustomName(getCurrentPageMarker());
         });
         this.setSlot(1, nextScreenButton);
 
 
         // Close screen button
         ItemStack close = new ItemStack(Items.STRUCTURE_VOID);
-        close.setTag(customData.copy());
-        close.setHoverName(Component.translatable("spectatorMenu.close"));
-        close.enchant(null, 0);
+        close.setNbt(customData.copy());
+        close.setCustomName(Text.translatable("spectatorMenu.close"));
+        close.addEnchantment(null, 0);
 
         GuiElement closeScreenButton = new GuiElement(close, (_i, _clickType, _slotActionType) -> {
             this.close();
-            player.closeContainer();
+            player.closeHandledScreen();
         });
         this.setSlot(8, closeScreenButton);
     }
@@ -89,7 +89,7 @@ public abstract class ListItemsGUI extends SimpleGui implements Container {
      */
     public static Item getFromName(String name) {
         int i = Math.abs(name.hashCode());
-        Item item = Item.byId(i % REGISTRY_ITEMS_SIZE);
+        Item item = Item.byRawId(i % REGISTRY_ITEMS_SIZE);
         if (item.equals(Items.AIR))
             item = Items.STONE;
 
@@ -101,8 +101,8 @@ public abstract class ListItemsGUI extends SimpleGui implements Container {
      *
      * @return translated page info text.
      */
-    private MutableComponent getCurrentPageMarker() {
-        return Component.translatable("book.pageIndicator", this.currentPage + 1, this.getMaxPages() + 1);
+    private MutableText getCurrentPageMarker() {
+        return Text.translatable("book.pageIndicator", this.currentPage + 1, this.getMaxPages() + 1);
     }
 
     public int getCurrentPage() {
@@ -111,7 +111,7 @@ public abstract class ListItemsGUI extends SimpleGui implements Container {
 
 
     @Override
-    public int getContainerSize() {
+    public int size() {
         return 9 * 6;
     }
 
@@ -120,11 +120,11 @@ public abstract class ListItemsGUI extends SimpleGui implements Container {
     }
 
     @Override
-    public void setChanged() {
+    public void markDirty() {
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean canPlayerUse(PlayerEntity player) {
         return false;
     }
 
